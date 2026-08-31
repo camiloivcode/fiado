@@ -4,9 +4,9 @@
 
 **Goal:** Reemplazar la v1 (6 archivos estáticos con `localStorage`) por un sistema con backend Express+SQLite (API REST) y frontend React+Vite (dashboard administrativo responsive), ambos dockerizados.
 
-**Architecture:** Monorepo con `backend/` (Express, `better-sqlite3`, API REST sin estado en memoria) y `frontend/` (React + Vite + React Router, consume la API por `fetch`). `logic.js` (aritmética de saldos) se porta del v1 al backend sin cambios de comportamiento. Docker Compose levanta ambos servicios; en desarrollo corren sueltos con `npm run dev`/`node server.js`.
+**Architecture:** Monorepo con `backend/` (Express, `node:sqlite` nativo — sin dependencia externa ni compilación, API REST sin estado en memoria) y `frontend/` (React + Vite + React Router, consume la API por `fetch`). `logic.js` (aritmética de saldos) se porta del v1 al backend sin cambios de comportamiento. Docker Compose levanta ambos servicios; en desarrollo corren sueltos con `npm run dev`/`node server.js`.
 
-**Tech Stack:** Node 20, Express 4, better-sqlite3, React 18, Vite 5, React Router 6, Docker, nginx (para servir el build de producción del frontend).
+**Tech Stack:** Node 20+ (usa el módulo nativo `node:sqlite`, sin dependencia externa de SQLite), Express 4, React 18, Vite 5, React Router 6, Docker, nginx (para servir el build de producción del frontend).
 
 **Spec:** `docs/superpowers/specs/2026-08-31-frontend-backend-split-design.md`
 
@@ -79,7 +79,7 @@ DEMO/
 - Test: `backend/test.js`
 
 **Interfaces:**
-- Produces: `db` (instancia better-sqlite3), `queries.{listarClientes,crearCliente,eliminarCliente,buscarCliente,listarMovimientos,movimientosDeCliente,crearMovimiento,eliminarMovimiento,buscarMovimiento,movimientosEnRango,listarCaja,crearCaja,cajaEnRango}` (statements preparados), `generarId()`, `ahoraISO()`, `mapMovimiento(row)`.
+- Produces: `db` (instancia `node:sqlite` `DatabaseSync`), `queries.{listarClientes,crearCliente,eliminarCliente,buscarCliente,listarMovimientos,movimientosDeCliente,crearMovimiento,eliminarMovimiento,buscarMovimiento,movimientosEnRango,listarCaja,crearCaja,cajaEnRango}` (statements preparados), `generarId()`, `ahoraISO()`, `mapMovimiento(row)`.
 
 - [ ] **Step 1: Crear `backend/package.json`**
 
@@ -93,12 +93,13 @@ DEMO/
     "test": "node test.js"
   },
   "dependencies": {
-    "better-sqlite3": "^11.3.0",
     "cors": "^2.8.5",
     "express": "^4.21.0"
   }
 }
 ```
+
+(Sin dependencia de SQLite: se usa el módulo nativo `node:sqlite`, disponible desde Node 22+. Cero compilación, cero binario prebuilt que pueda faltar.)
 
 - [ ] **Step 2: Instalar dependencias**
 
@@ -110,14 +111,14 @@ Expected: crea `node_modules/` y `package-lock.json` sin errores.
 ```js
 import path from 'node:path';
 import fs from 'node:fs';
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-export const db = new Database(path.join(DATA_DIR, 'fiado.db'));
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+export const db = new DatabaseSync(path.join(DATA_DIR, 'fiado.db'));
+db.exec('PRAGMA journal_mode = WAL');
+db.exec('PRAGMA foreign_keys = ON');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS clientes (
@@ -850,7 +851,7 @@ data
 - [ ] **Step 2: Escribir `backend/Dockerfile`**
 
 ```dockerfile
-FROM node:20-bookworm-slim
+FROM node:22-bookworm-slim
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
@@ -860,7 +861,7 @@ EXPOSE 4000
 CMD ["node", "server.js"]
 ```
 
-(Se usa `bookworm-slim`, no `alpine`: `better-sqlite3` trae binarios prebuilt para glibc/Linux x64, así se evita compilar con `node-gyp` dentro del contenedor.)
+(Node 22, no 20: es el mínimo que trae `node:sqlite` estable — sin esto el backend no arranca dentro del contenedor. Sin dependencia nativa que compilar, así que `alpine` también serviría, pero se mantiene `bookworm-slim` por consistencia con el resto de las imágenes.)
 
 - [ ] **Step 3: Construir y probar la imagen**
 
