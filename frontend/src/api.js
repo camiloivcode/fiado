@@ -12,8 +12,10 @@ async function solicitar(ruta, opciones = {}) {
 }
 
 export const api = {
+  salud: () => solicitar('/api/health'),
   listarClientes: () => solicitar('/api/clientes'),
   crearCliente: (nombre) => solicitar('/api/clientes', { method: 'POST', body: JSON.stringify({ nombre }) }),
+  editarCliente: (id, nombre) => solicitar(`/api/clientes/${id}`, { method: 'PATCH', body: JSON.stringify({ nombre }) }),
   eliminarCliente: (id) => solicitar(`/api/clientes/${id}`, { method: 'DELETE' }),
   movimientosDeCliente: (id) => solicitar(`/api/clientes/${id}/movimientos`),
   crearMovimiento: (clienteId, tipo, monto) =>
@@ -21,6 +23,8 @@ export const api = {
   eliminarMovimiento: (id) => solicitar(`/api/movimientos/${id}`, { method: 'DELETE' }),
   listarCaja: () => solicitar('/api/caja'),
   cerrarCaja: (monto, nota) => solicitar('/api/caja', { method: 'POST', body: JSON.stringify({ monto, nota }) }),
+  editarCaja: (id, monto, nota) => solicitar(`/api/caja/${id}`, { method: 'PATCH', body: JSON.stringify({ monto, nota }) }),
+  eliminarCaja: (id) => solicitar(`/api/caja/${id}`, { method: 'DELETE' }),
   resumen: () => solicitar('/api/resumen'),
   reportes: (desde, hasta) => solicitar(`/api/reportes?desde=${desde}&hasta=${hasta}`),
 };

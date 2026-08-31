@@ -1,25 +1,62 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { LayoutDashboard, Users, Wallet, FileBarChart, Menu } from 'lucide-react';
 import { ToastProvider } from './Toast.jsx';
+import { api } from '../api.js';
 
 const ENLACES = [
-  { to: '/', etiqueta: 'Resumen', icono: '📊' },
-  { to: '/clientes', etiqueta: 'Clientes', icono: '👥' },
-  { to: '/caja', etiqueta: 'Caja', icono: '💰' },
-  { to: '/reportes', etiqueta: 'Reportes', icono: '📅' },
+  { to: '/', etiqueta: 'Resumen', Icono: LayoutDashboard },
+  { to: '/clientes', etiqueta: 'Clientes', Icono: Users },
+  { to: '/caja', etiqueta: 'Caja', Icono: Wallet },
+  { to: '/reportes', etiqueta: 'Reportes', Icono: FileBarChart },
 ];
 
-function Navegacion({ variante }) {
+const FECHA_HOY = new Date().toLocaleDateString('es-CO', {
+  weekday: 'long', day: 'numeric', month: 'long',
+});
+
+function activoPara(pathname, to) {
+  return to === '/' ? pathname === '/' : pathname.startsWith(to);
+}
+
+function Navegacion({ variante, colapsado }) {
+  const location = useLocation();
+  const itemRefs = useRef({});
+  const [rect, setRect] = useState(null);
+
+  useLayoutEffect(() => {
+    function recalcular() {
+      const activo = ENLACES.find((e) => activoPara(location.pathname, e.to));
+      const el = activo && itemRefs.current[activo.to];
+      if (!el) return setRect(null);
+      setRect({ top: el.offsetTop, left: el.offsetLeft, width: el.offsetWidth, height: el.offsetHeight });
+    }
+    recalcular();
+    window.addEventListener('resize', recalcular);
+    // el sidebar tarda ~250ms en transicionar su ancho al colapsar/expandir;
+    // se recalcula de nuevo una vez asentado para que el indicador quede exacto.
+    const id = setTimeout(recalcular, 280);
+    return () => {
+      window.removeEventListener('resize', recalcular);
+      clearTimeout(id);
+    };
+  }, [location.pathname, colapsado]);
+
   return (
     <nav className={`nav nav-${variante}`}>
-      {ENLACES.map((e) => (
+      {rect && <span className="nav-indicador" style={rect} />}
+      {ENLACES.map(({ to, etiqueta, Icono }) => (
         <NavLink
-          key={e.to}
-          to={e.to}
-          end={e.to === '/'}
+          key={to}
+          to={to}
+          end={to === '/'}
+          ref={(el) => { itemRefs.current[to] = el; }}
           className={({ isActive }) => `nav-item ${isActive ? 'activo' : ''}`}
+          title={etiqueta}
+          aria-label={etiqueta}
         >
-          <span className="nav-icono" aria-hidden="true">{e.icono}</span>
-          <span className="nav-etiqueta">{e.etiqueta}</span>
+          <Icono className="icono nav-icono" size={20} strokeWidth={1.75} aria-hidden="true" />
+          <span className="nav-etiqueta">{etiqueta}</span>
         </NavLink>
       ))}
     </nav>
@@ -27,17 +64,76 @@ function Navegacion({ variante }) {
 }
 
 export default function Layout() {
+  const location = useLocation();
+  const pagina = ENLACES.find((e) => e.to === location.pathname);
+  const [colapsado, setColapsado] = useState(() => localStorage.getItem('sidebarColapsado') === '1');
+  const [conectado, setConectado] = useState(true);
+
+  function alternarSidebar() {
+    setColapsado((actual) => {
+      const nuevo = !actual;
+      localStorage.setItem('sidebarColapsado', nuevo ? '1' : '0');
+      return nuevo;
+    });
+  }
+
+  useEffect(() => {
+    let vigente = true;
+    async function chequear() {
+      try {
+        await api.salud();
+        if (vigente) setConectado(true);
+      } catch {
+        if (vigente) setConectado(false);
+      }
+    }
+    chequear();
+    const id = setInterval(chequear, 15000);
+    return () => {
+      vigente = false;
+      clearInterval(id);
+    };
+  }, []);
+
   return (
     <ToastProvider>
-      <div className="shell">
-        <aside className="sidebar">
-          <h1 className="marca">Fiado</h1>
-          <Navegacion variante="sidebar" />
-        </aside>
-        <main className="contenido">
-          <Outlet />
-        </main>
-        <Navegacion variante="bottom" />
+      <div className="app-shell">
+        <header className="barra-superior">
+          <button
+            className="btn-colapsar"
+            onClick={alternarSidebar}
+            aria-label={colapsado ? 'Expandir menú' : 'Colapsar menú'}
+          >
+            <Menu size={20} strokeWidth={2} aria-hidden="true" />
+          </button>
+          <span className="marca">
+            <span className="marca-icono" aria-hidden="true">
+              <Wallet size={18} strokeWidth={2} />
+            </span>
+            <span className="marca-texto">Fiado</span>
+          </span>
+          <span className="barra-superior-derecha">
+            <span
+              className={`indicador-conexion ${conectado ? '' : 'desconectado'}`}
+              title={conectado ? 'Conectado' : 'Sin conexión con el servidor'}
+            />
+            <span className="barra-superior-fecha">{FECHA_HOY}</span>
+          </span>
+        </header>
+        <div className="shell">
+          <aside className={`sidebar ${colapsado ? 'colapsado' : ''}`}>
+            <Navegacion variante="sidebar" colapsado={colapsado} />
+          </aside>
+          <main className="contenido">
+            {pagina && (
+              <header className="topbar">
+                <h2 className="topbar-titulo">{pagina.etiqueta}</h2>
+              </header>
+            )}
+            <Outlet />
+          </main>
+          <Navegacion variante="bottom" />
+        </div>
       </div>
     </ToastProvider>
   );

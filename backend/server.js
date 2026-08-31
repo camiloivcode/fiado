@@ -11,6 +11,8 @@ export function crearApp() {
   app.use(cors());
   app.use(express.json());
 
+  app.get('/api/health', (req, res) => res.json({ ok: true }));
+
   app.use('/api/clientes', clientesRouter);
   app.use('/api/movimientos', movimientosRouter);
   app.use('/api/caja', cajaRouter);

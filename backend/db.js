@@ -48,6 +48,7 @@ export function mapMovimiento(row) {
 export const queries = {
   listarClientes: db.prepare('SELECT * FROM clientes ORDER BY nombre'),
   crearCliente: db.prepare('INSERT INTO clientes (id, nombre, telefono, creado_en) VALUES (?, ?, ?, ?)'),
+  actualizarCliente: db.prepare('UPDATE clientes SET nombre = ? WHERE id = ?'),
   eliminarCliente: db.prepare('DELETE FROM clientes WHERE id = ?'),
   buscarCliente: db.prepare('SELECT * FROM clientes WHERE id = ?'),
 
@@ -60,5 +61,8 @@ export const queries = {
 
   listarCaja: db.prepare('SELECT * FROM caja ORDER BY fecha DESC'),
   crearCaja: db.prepare('INSERT INTO caja (id, fecha, monto, nota) VALUES (?, ?, ?, ?)'),
+  actualizarCaja: db.prepare('UPDATE caja SET monto = ?, nota = ? WHERE id = ?'),
+  eliminarCaja: db.prepare('DELETE FROM caja WHERE id = ?'),
+  buscarCaja: db.prepare('SELECT * FROM caja WHERE id = ?'),
   cajaEnRango: db.prepare('SELECT * FROM caja WHERE fecha >= ? AND fecha <= ? ORDER BY fecha'),
 };

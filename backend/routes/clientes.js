@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { queries, mapMovimiento, generarId, ahoraISO } from '../db.js';
-import { saldoCliente } from '../logic.js';
+import { saldoCliente, ultimaActividad } from '../logic.js';
 
 const router = Router();
 
@@ -13,6 +13,7 @@ router.get('/', (req, res) => {
       nombre: c.nombre,
       telefono: c.telefono,
       saldo: saldoCliente(c.id, movimientos),
+      ultimaActividad: ultimaActividad(c.id, movimientos),
     }))
   );
 });
@@ -23,6 +24,15 @@ router.post('/', (req, res) => {
   const cliente = { id: generarId(), nombre, telefono: '', creadoEn: ahoraISO() };
   queries.crearCliente.run(cliente.id, cliente.nombre, cliente.telefono, cliente.creadoEn);
   res.status(201).json({ id: cliente.id, nombre: cliente.nombre, telefono: cliente.telefono, saldo: 0 });
+});
+
+router.patch('/:id', (req, res) => {
+  const cliente = queries.buscarCliente.get(req.params.id);
+  if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
+  const nombre = typeof req.body.nombre === 'string' ? req.body.nombre.trim() : '';
+  if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
+  queries.actualizarCliente.run(nombre, req.params.id);
+  res.json({ id: cliente.id, nombre, telefono: cliente.telefono });
 });
 
 router.get('/:id/movimientos', (req, res) => {
