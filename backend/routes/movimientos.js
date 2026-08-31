@@ -9,6 +9,9 @@ router.post('/', (req, res) => {
   if (tipo !== 'fiado' && tipo !== 'abono') {
     return res.status(400).json({ error: "tipo debe ser 'fiado' o 'abono'" });
   }
+  if (typeof clienteId !== 'string' || !clienteId) {
+    return res.status(400).json({ error: 'clienteId es obligatorio' });
+  }
   const cliente = queries.buscarCliente.get(clienteId);
   if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
   const montoNum = parsearMonto(monto);

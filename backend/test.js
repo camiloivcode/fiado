@@ -151,6 +151,20 @@ respuesta = await fetch(`${base}/api/clientes`);
 const listaTrasBorrar = (await respuesta.json()).find((c) => c.id === donaMarta.id);
 assert.equal(listaTrasBorrar.saldo, -5000);
 
+respuesta = await fetch(`${base}/api/movimientos`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({}),
+});
+assert.equal(respuesta.status, 400);
+
+respuesta = await fetch(`${base}/api/movimientos`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ tipo: 'fiado', monto: 1000 }),
+});
+assert.equal(respuesta.status, 400);
+
 servidor.close();
 
 console.log('OK: todas las pruebas pasaron');
