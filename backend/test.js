@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'fiado-test-'));
+process.env.NODE_ENV = 'test';
 
 const { queries, generarId, ahoraISO } = await import('./db.js');
 import {
@@ -58,5 +59,48 @@ const ordenados = ordenarPorFechaDesc([
   { fecha: '2026-01-03T10:00:00.000Z' },
 ]);
 assert.equal(ordenados[0].fecha, '2026-01-03T10:00:00.000Z');
+
+// --- servidor de pruebas ---
+const { crearApp } = await import('./server.js');
+const app = crearApp();
+const servidor = app.listen(0);
+const base = `http://localhost:${servidor.address().port}`;
+
+// --- rutas /api/clientes ---
+let respuesta = await fetch(`${base}/api/clientes`);
+assert.equal(respuesta.status, 200);
+assert.deepEqual(await respuesta.json(), []);
+
+respuesta = await fetch(`${base}/api/clientes`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ nombre: 'Don Pedro' }),
+});
+assert.equal(respuesta.status, 201);
+const donPedro = await respuesta.json();
+assert.equal(donPedro.nombre, 'Don Pedro');
+assert.equal(donPedro.saldo, 0);
+
+respuesta = await fetch(`${base}/api/clientes`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ nombre: '' }),
+});
+assert.equal(respuesta.status, 400);
+
+respuesta = await fetch(`${base}/api/clientes/${donPedro.id}/movimientos`);
+assert.equal(respuesta.status, 200);
+assert.deepEqual(await respuesta.json(), []);
+
+respuesta = await fetch(`${base}/api/clientes/no-existe/movimientos`);
+assert.equal(respuesta.status, 404);
+
+respuesta = await fetch(`${base}/api/clientes/${donPedro.id}`, { method: 'DELETE' });
+assert.equal(respuesta.status, 204);
+
+respuesta = await fetch(`${base}/api/clientes/${donPedro.id}`, { method: 'DELETE' });
+assert.equal(respuesta.status, 404);
+
+servidor.close();
 
 console.log('OK: todas las pruebas pasaron');
