@@ -101,6 +101,56 @@ assert.equal(respuesta.status, 204);
 respuesta = await fetch(`${base}/api/clientes/${donPedro.id}`, { method: 'DELETE' });
 assert.equal(respuesta.status, 404);
 
+// --- rutas /api/movimientos ---
+respuesta = await fetch(`${base}/api/clientes`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ nombre: 'Doña Marta' }),
+});
+const donaMarta = await respuesta.json();
+
+respuesta = await fetch(`${base}/api/movimientos`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ clienteId: donaMarta.id, tipo: 'fiado', monto: 15000 }),
+});
+assert.equal(respuesta.status, 201);
+const fiado1 = await respuesta.json();
+assert.equal(fiado1.monto, 15000);
+
+respuesta = await fetch(`${base}/api/movimientos`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ clienteId: donaMarta.id, tipo: 'abono', monto: 5000 }),
+});
+assert.equal(respuesta.status, 201);
+
+respuesta = await fetch(`${base}/api/movimientos`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ clienteId: donaMarta.id, tipo: 'fiado', monto: -100 }),
+});
+assert.equal(respuesta.status, 400);
+
+respuesta = await fetch(`${base}/api/movimientos`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ clienteId: 'no-existe', tipo: 'fiado', monto: 1000 }),
+});
+assert.equal(respuesta.status, 404);
+
+respuesta = await fetch(`${base}/api/clientes`);
+const listaClientes = await respuesta.json();
+const martaConSaldo = listaClientes.find((c) => c.id === donaMarta.id);
+assert.equal(martaConSaldo.saldo, 10000);
+
+respuesta = await fetch(`${base}/api/movimientos/${fiado1.id}`, { method: 'DELETE' });
+assert.equal(respuesta.status, 204);
+
+respuesta = await fetch(`${base}/api/clientes`);
+const listaTrasBorrar = (await respuesta.json()).find((c) => c.id === donaMarta.id);
+assert.equal(listaTrasBorrar.saldo, -5000);
+
 servidor.close();
 
 console.log('OK: todas las pruebas pasaron');
