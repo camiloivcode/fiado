@@ -197,6 +197,26 @@ assert.equal(respuesta.status, 201);
 const cajaConNotaNum = await respuesta.json();
 assert.equal(cajaConNotaNum.nota, '');
 
+// --- rutas /api/resumen y /api/reportes ---
+respuesta = await fetch(`${base}/api/resumen`);
+assert.equal(respuesta.status, 200);
+const resumen = await respuesta.json();
+assert.equal(typeof resumen.totalFiado, 'number');
+assert.ok(resumen.topDeudores.length <= 5);
+
+const hoy = new Date().toISOString().slice(0, 10);
+respuesta = await fetch(`${base}/api/reportes?desde=${hoy}&hasta=${hoy}`);
+assert.equal(respuesta.status, 200);
+const reporte = await respuesta.json();
+assert.ok(Array.isArray(reporte.movimientos));
+assert.ok(Array.isArray(reporte.porDia));
+
+respuesta = await fetch(`${base}/api/reportes`);
+assert.equal(respuesta.status, 400);
+
+respuesta = await fetch(`${base}/api/ruta-inexistente`);
+assert.equal(respuesta.status, 404);
+
 servidor.close();
 
 console.log('OK: todas las pruebas pasaron');
