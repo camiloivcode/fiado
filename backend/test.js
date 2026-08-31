@@ -165,6 +165,29 @@ respuesta = await fetch(`${base}/api/movimientos`, {
 });
 assert.equal(respuesta.status, 400);
 
+// --- rutas /api/caja ---
+respuesta = await fetch(`${base}/api/caja`);
+assert.deepEqual(await respuesta.json(), []);
+
+respuesta = await fetch(`${base}/api/caja`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ monto: 250000, nota: 'cierre normal' }),
+});
+assert.equal(respuesta.status, 201);
+
+respuesta = await fetch(`${base}/api/caja`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ monto: 0, nota: '' }),
+});
+assert.equal(respuesta.status, 400);
+
+respuesta = await fetch(`${base}/api/caja`);
+const historialCaja = await respuesta.json();
+assert.equal(historialCaja.length, 1);
+assert.equal(historialCaja[0].monto, 250000);
+
 servidor.close();
 
 console.log('OK: todas las pruebas pasaron');

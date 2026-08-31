@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import clientesRouter from './routes/clientes.js';
 import movimientosRouter from './routes/movimientos.js';
+import cajaRouter from './routes/caja.js';
 
 export function crearApp() {
   const app = express();
@@ -10,6 +11,7 @@ export function crearApp() {
 
   app.use('/api/clientes', clientesRouter);
   app.use('/api/movimientos', movimientosRouter);
+  app.use('/api/caja', cajaRouter);
 
   app.use((req, res) => {
     res.status(404).json({ error: 'Ruta no encontrada' });
