@@ -188,6 +188,15 @@ const historialCaja = await respuesta.json();
 assert.equal(historialCaja.length, 1);
 assert.equal(historialCaja[0].monto, 250000);
 
+respuesta = await fetch(`${base}/api/caja`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ monto: 1000, nota: 12345 }),
+});
+assert.equal(respuesta.status, 201);
+const cajaConNotaNum = await respuesta.json();
+assert.equal(cajaConNotaNum.nota, '');
+
 servidor.close();
 
 console.log('OK: todas las pruebas pasaron');

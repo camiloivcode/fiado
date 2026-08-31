@@ -13,7 +13,7 @@ router.post('/', (req, res) => {
   if (!validarMonto(montoNum)) {
     return res.status(400).json({ error: 'Ingresa un monto válido, mayor a cero' });
   }
-  const nota = (req.body.nota || '').trim();
+  const nota = typeof req.body.nota === 'string' ? req.body.nota.trim() : '';
   const cierre = { id: generarId(), fecha: ahoraISO(), monto: montoNum, nota };
   queries.crearCaja.run(cierre.id, cierre.fecha, cierre.monto, cierre.nota);
   res.status(201).json(cierre);
