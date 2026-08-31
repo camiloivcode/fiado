@@ -14,6 +14,7 @@ import {
   saldoCliente,
   totalFiado,
   ordenarPorFechaDesc,
+  diaLocal,
 } from './logic.js';
 
 // --- db.js: capa de acceso a datos ---
@@ -60,6 +61,12 @@ const ordenados = ordenarPorFechaDesc([
 ]);
 assert.equal(ordenados[0].fecha, '2026-01-03T10:00:00.000Z');
 
+// diaLocal: bucketing por día en hora de Bogotá (UTC-5, sin horario de verano)
+// 23:30 UTC == 18:30 local, sigue siendo el mismo día local
+assert.equal(diaLocal('2026-08-31T23:30:00.000Z'), '2026-08-31');
+// 02:00 UTC del 1-sep == 21:00 local del 31-ago, día local anterior
+assert.equal(diaLocal('2026-09-01T02:00:00.000Z'), '2026-08-31');
+
 // --- servidor de pruebas ---
 const { crearApp } = await import('./server.js');
 const app = crearApp();
@@ -85,6 +92,13 @@ respuesta = await fetch(`${base}/api/clientes`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ nombre: '' }),
+});
+assert.equal(respuesta.status, 400);
+
+respuesta = await fetch(`${base}/api/clientes`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ nombre: 12345 }),
 });
 assert.equal(respuesta.status, 400);
 
@@ -129,6 +143,15 @@ respuesta = await fetch(`${base}/api/movimientos`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ clienteId: donaMarta.id, tipo: 'fiado', monto: -100 }),
+});
+assert.equal(respuesta.status, 400);
+
+// monto con notación decimal/separador de miles (ej. "12.500") debe rechazarse ANTES de truncar,
+// no aceptarse silenciosamente como 12
+respuesta = await fetch(`${base}/api/movimientos`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ clienteId: donaMarta.id, tipo: 'fiado', monto: '12.500' }),
 });
 assert.equal(respuesta.status, 400);
 
@@ -180,6 +203,14 @@ respuesta = await fetch(`${base}/api/caja`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ monto: 0, nota: '' }),
+});
+assert.equal(respuesta.status, 400);
+
+// mismo caso que arriba pero para /api/caja: no truncar antes de validar
+respuesta = await fetch(`${base}/api/caja`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ monto: '12.500', nota: '' }),
 });
 assert.equal(respuesta.status, 400);
 

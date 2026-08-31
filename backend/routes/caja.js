@@ -9,10 +9,10 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const montoNum = parsearMonto(req.body.monto);
-  if (!validarMonto(montoNum)) {
+  if (!validarMonto(req.body.monto)) {
     return res.status(400).json({ error: 'Ingresa un monto válido, mayor a cero' });
   }
+  const montoNum = parsearMonto(req.body.monto);
   const nota = typeof req.body.nota === 'string' ? req.body.nota.trim() : '';
   const cierre = { id: generarId(), fecha: ahoraISO(), monto: montoNum, nota };
   queries.crearCaja.run(cierre.id, cierre.fecha, cierre.monto, cierre.nota);

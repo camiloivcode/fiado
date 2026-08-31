@@ -5,7 +5,7 @@ import { useToast } from '../components/Toast.jsx';
 import TrendChart from '../components/TrendChart.jsx';
 
 function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString('en-CA');
 }
 
 export default function Reportes() {

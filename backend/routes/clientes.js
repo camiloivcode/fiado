@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const nombre = (req.body.nombre || '').trim();
+  const nombre = typeof req.body.nombre === 'string' ? req.body.nombre.trim() : '';
   if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
   const cliente = { id: generarId(), nombre, telefono: '', creadoEn: ahoraISO() };
   queries.crearCliente.run(cliente.id, cliente.nombre, cliente.telefono, cliente.creadoEn);

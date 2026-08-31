@@ -14,10 +14,10 @@ router.post('/', (req, res) => {
   }
   const cliente = queries.buscarCliente.get(clienteId);
   if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
-  const montoNum = parsearMonto(monto);
-  if (!validarMonto(montoNum)) {
+  if (!validarMonto(monto)) {
     return res.status(400).json({ error: 'Ingresa un monto válido, mayor a cero' });
   }
+  const montoNum = parsearMonto(monto);
   const mov = { id: generarId(), clienteId, tipo, monto: montoNum, fecha: ahoraISO() };
   queries.crearMovimiento.run(mov.id, mov.clienteId, mov.tipo, mov.monto, mov.fecha);
   res.status(201).json(mov);

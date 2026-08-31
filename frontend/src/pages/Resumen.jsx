@@ -9,7 +9,7 @@ function rangoUltimos30Dias() {
   const hasta = new Date();
   const desde = new Date();
   desde.setDate(desde.getDate() - 29);
-  const iso = (d) => d.toISOString().slice(0, 10);
+  const iso = (d) => d.toLocaleDateString('en-CA');
   return { desde: iso(desde), hasta: iso(hasta) };
 }
 
