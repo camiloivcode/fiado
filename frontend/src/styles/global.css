@@ -486,6 +486,23 @@ a { color: inherit; }
 .dialogo-acciones button:active { transform: scale(0.96); }
 .dialogo-acciones button.btn-peligro { background: var(--rojo); color: #fff; }
 
+/* ---------- login ---------- */
+.login-shell {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--fondo); padding: 24px;
+}
+.login-card { width: 100%; max-width: 340px; background: var(--superficie);
+  border: 1px solid var(--borde); border-radius: var(--radio); padding: 28px 24px;
+  box-shadow: var(--sombra); animation: entrar 0.3s var(--alive) both;
+}
+.login-icono {
+  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: var(--radio-control);
+  background: var(--acento-suave); color: var(--acento); margin-bottom: 4px;
+}
+.login-titulo { font-family: var(--fuente-display); font-size: 22px; font-weight: 800; margin: 0 0 12px; }
+.login-card .btn-primario { margin-top: 6px; }
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);

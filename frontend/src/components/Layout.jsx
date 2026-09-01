@@ -1,8 +1,8 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { LayoutDashboard, Users, Wallet, FileBarChart, Menu } from 'lucide-react';
-import { ToastProvider } from './Toast.jsx';
+import { LayoutDashboard, Users, Wallet, FileBarChart, Menu, LogOut } from 'lucide-react';
 import { api } from '../api.js';
+import { borrarToken } from '../sesion.js';
 
 const ENLACES = [
   { to: '/', etiqueta: 'Resumen', Icono: LayoutDashboard },
@@ -95,49 +95,60 @@ export default function Layout() {
     };
   }, []);
 
+  async function cerrarSesion() {
+    try {
+      await api.logout();
+    } catch {
+      // la sesión ya pudo haber expirado; no impide cerrarla localmente
+    }
+    borrarToken();
+    location.reload();
+  }
+
   return (
-    <ToastProvider>
-      <div className="app-shell">
-        <header className="barra-superior">
-          <button
-            className="btn-colapsar"
-            onClick={alternarSidebar}
-            aria-label={colapsado ? 'Expandir menú' : 'Colapsar menú'}
-          >
-            <Menu size={20} strokeWidth={2} aria-hidden="true" />
+    <div className="app-shell">
+      <header className="barra-superior">
+        <button
+          className="btn-colapsar"
+          onClick={alternarSidebar}
+          aria-label={colapsado ? 'Expandir menú' : 'Colapsar menú'}
+        >
+          <Menu size={20} strokeWidth={2} aria-hidden="true" />
+        </button>
+        <span className="marca">
+          <span className="marca-icono" aria-hidden="true">
+            <Wallet size={18} strokeWidth={2} />
+          </span>
+          <span className="marca-texto">Fiado</span>
+        </span>
+        <span className="barra-superior-derecha">
+          <span
+            className={`indicador-conexion ${conectado ? '' : 'desconectado'}`}
+            title={conectado ? 'Conectado' : 'Sin conexión con el servidor'}
+          />
+          <span className="barra-superior-fecha">{FECHA_HOY}</span>
+          <button className="btn-colapsar" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión">
+            <LogOut size={18} strokeWidth={2} aria-hidden="true" />
           </button>
-          <span className="marca">
-            <span className="marca-icono" aria-hidden="true">
-              <Wallet size={18} strokeWidth={2} />
-            </span>
-            <span className="marca-texto">Fiado</span>
-          </span>
-          <span className="barra-superior-derecha">
-            <span
-              className={`indicador-conexion ${conectado ? '' : 'desconectado'}`}
-              title={conectado ? 'Conectado' : 'Sin conexión con el servidor'}
-            />
-            <span className="barra-superior-fecha">{FECHA_HOY}</span>
-          </span>
-        </header>
-        <div className="shell">
-          <aside className={`sidebar ${colapsado ? 'colapsado' : ''}`}>
-            <Navegacion variante="sidebar" colapsado={colapsado} />
-          </aside>
-          <main className="contenido">
-            {pagina && (
-              <header className="topbar">
-                <span className="topbar-icono" aria-hidden="true">
-                  <pagina.Icono size={20} strokeWidth={1.75} />
-                </span>
-                <h2 className="topbar-titulo">{pagina.etiqueta}</h2>
-              </header>
-            )}
-            <Outlet />
-          </main>
-          <Navegacion variante="bottom" />
-        </div>
+        </span>
+      </header>
+      <div className="shell">
+        <aside className={`sidebar ${colapsado ? 'colapsado' : ''}`}>
+          <Navegacion variante="sidebar" colapsado={colapsado} />
+        </aside>
+        <main className="contenido">
+          {pagina && (
+            <header className="topbar">
+              <span className="topbar-icono" aria-hidden="true">
+                <pagina.Icono size={20} strokeWidth={1.75} />
+              </span>
+              <h2 className="topbar-titulo">{pagina.etiqueta}</h2>
+            </header>
+          )}
+          <Outlet />
+        </main>
+        <Navegacion variante="bottom" />
       </div>
-    </ToastProvider>
+    </div>
   );
 }
