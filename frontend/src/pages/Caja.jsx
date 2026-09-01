@@ -5,6 +5,7 @@ import { formatearPesos } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
 import MontoInput from '../components/MontoInput.jsx';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
+import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
 
 export default function Caja() {
   const { mostrarError, mostrarExito } = useToast();
@@ -25,6 +26,7 @@ export default function Caja() {
   }
 
   useEffect(() => { cargar(); }, []);
+  useRefrescarAlEnfocar(cargar);
 
   async function guardar(evento) {
     evento.preventDefault();

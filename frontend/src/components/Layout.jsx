@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { LayoutDashboard, Users, Wallet, FileBarChart, Menu, LogOut } from 'lucide-react';
 import { api } from '../api.js';
 import { borrarToken } from '../sesion.js';
+import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
 
 const ENLACES = [
   { to: '/', etiqueta: 'Resumen', Icono: LayoutDashboard },
@@ -77,23 +78,17 @@ export default function Layout() {
     });
   }
 
-  useEffect(() => {
-    let vigente = true;
-    async function chequear() {
-      try {
-        await api.salud();
-        if (vigente) setConectado(true);
-      } catch {
-        if (vigente) setConectado(false);
-      }
+  async function chequear() {
+    try {
+      await api.salud();
+      setConectado(true);
+    } catch {
+      setConectado(false);
     }
-    chequear();
-    const id = setInterval(chequear, 15000);
-    return () => {
-      vigente = false;
-      clearInterval(id);
-    };
-  }, []);
+  }
+
+  useEffect(() => { chequear(); }, []);
+  useRefrescarAlEnfocar(chequear);
 
   async function cerrarSesion() {
     try {

@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { Search, FileX, Download, Rows3 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { api } from '../api.js';
 import { formatearPesos } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
 import TrendChart from '../components/TrendChart.jsx';
+import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
 
 function hoyISO() {
   return new Date().toLocaleDateString('en-CA');
@@ -13,21 +17,39 @@ function celdaCSV(valor) {
   return `"${String(valor).replace(/"/g, '""')}"`;
 }
 
-function exportarCSV(reporte, desde, hasta) {
+function filasCSVDe(reporte) {
   const filas = [
     ...reporte.movimientos.map((m) => [m.fecha.slice(0, 10), m.tipo === 'fiado' ? 'Fiado' : 'Abono', m.monto]),
     ...reporte.caja.map((c) => [c.fecha.slice(0, 10), 'Cierre de caja', c.monto]),
   ].sort((a, b) => a[0].localeCompare(b[0]));
 
-  const filasCSV = [['Fecha', 'Tipo', 'Monto'], ...filas]
+  return [['Fecha', 'Tipo', 'Monto'], ...filas]
     .map((fila) => fila.map(celdaCSV).join(','))
     .join('\r\n');
+}
 
-  const blob = new Blob([`﻿${filasCSV}`], { type: 'text/csv;charset=utf-8;' });
+// El atributo `download` sobre una URL blob: lo ignora el WebView de Android — no
+// descarga nada. En la APK se escribe el archivo y se abre el selector de compartir.
+async function exportarCSV(reporte, desde, hasta) {
+  const nombre = `reporte_${desde}_a_${hasta}.csv`;
+  const contenido = `﻿${filasCSVDe(reporte)}`;
+
+  if (Capacitor.isNativePlatform()) {
+    const { uri } = await Filesystem.writeFile({
+      path: nombre,
+      data: contenido,
+      directory: Directory.Cache,
+      encoding: Encoding.UTF8,
+    });
+    await Share.share({ title: nombre, url: uri });
+    return;
+  }
+
+  const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const enlace = document.createElement('a');
   enlace.href = url;
-  enlace.download = `reporte_${desde}_a_${hasta}.csv`;
+  enlace.download = nombre;
   enlace.click();
   URL.revokeObjectURL(url);
 }
@@ -48,13 +70,17 @@ export default function Reportes() {
   }
 
   async function consultar(evento) {
-    evento.preventDefault();
+    evento?.preventDefault();
     try {
       setReporte(await api.reportes(desde, hasta));
     } catch (e) {
       mostrarError(e.message);
     }
   }
+
+  // solo refresca si ya se pidió un reporte — evita disparar una consulta
+  // con el rango por defecto antes de que el usuario haya interactuado
+  useRefrescarAlEnfocar(() => { if (reporte) consultar(); });
 
   return (
     <div className="pagina">
@@ -95,7 +121,17 @@ export default function Reportes() {
                   <Rows3 size={15} strokeWidth={2} aria-hidden="true" /> {compacta ? 'Vista normal' : 'Vista compacta'}
                 </button>
                 {(reporte.movimientos.length > 0 || reporte.caja.length > 0) && (
-                  <button type="button" className="btn-secundario" onClick={() => exportarCSV(reporte, desde, hasta)}>
+                  <button
+                    type="button"
+                    className="btn-secundario"
+                    onClick={async () => {
+                      try {
+                        await exportarCSV(reporte, desde, hasta);
+                      } catch (e) {
+                        mostrarError(e.message);
+                      }
+                    }}
+                  >
                     <Download size={15} strokeWidth={2} aria-hidden="true" /> Exportar CSV
                   </button>
                 )}

@@ -8,6 +8,7 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import MontoInput from '../components/MontoInput.jsx';
 import Sparkline from '../components/Sparkline.jsx';
 import Dinero from '../components/Dinero.jsx';
+import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
 
 export default function Cliente() {
   const { id } = useParams();
@@ -34,6 +35,7 @@ export default function Cliente() {
   }
 
   useEffect(() => { cargar(); }, [id]);
+  useRefrescarAlEnfocar(cargar);
 
   async function guardarMovimiento(evento) {
     evento.preventDefault();

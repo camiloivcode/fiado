@@ -4,6 +4,7 @@ import { Search, Plus, UsersRound, UserPlus, Clock, ChevronLeft, ChevronRight, R
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
+import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
 
 const DIAS_ALERTA = 30;
 const POR_PAGINA = 10;
@@ -40,6 +41,7 @@ export default function Clientes() {
   }
 
   useEffect(() => { cargar(); }, []);
+  useRefrescarAlEnfocar(cargar);
 
   async function crearCliente(evento) {
     evento.preventDefault();

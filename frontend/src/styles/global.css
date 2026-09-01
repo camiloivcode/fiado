@@ -1,3 +1,20 @@
+/* fuentes auto-hospedadas (public/fuentes): la APK corre sin red garantizada,
+   depender del CDN de Google Fonts las haría caer al fallback en modo avión */
+@font-face {
+  font-family: 'Archivo';
+  font-weight: 600 800;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fuentes/archivo.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Public Sans';
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fuentes/public-sans.woff2') format('woff2');
+}
+
 :root {
   color-scheme: light;
 
@@ -92,7 +109,7 @@ a { color: inherit; }
 }
 
 /* ---------- barra superior ---------- */
-.app-shell { display: flex; flex-direction: column; min-height: 100vh; }
+.app-shell { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
 
 .barra-superior {
   display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 14px;
@@ -488,7 +505,7 @@ a { color: inherit; }
 
 /* ---------- login ---------- */
 .login-shell {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center;
   background: var(--fondo); padding: 24px;
 }
 .login-card { width: 100%; max-width: 340px; background: var(--superficie);
@@ -518,7 +535,7 @@ a { color: inherit; }
   .shell { grid-template-columns: auto 1fr; }
   .sidebar {
     display: flex; flex-direction: column; width: 248px; position: sticky; top: 56px;
-    align-self: start; height: calc(100vh - 56px); overflow-y: auto;
+    align-self: start; height: calc(100vh - 56px); height: calc(100dvh - 56px); overflow-y: auto;
     background: var(--sidebar-textura);
     border-right: 1px solid var(--sidebar-borde);
     transition: width 0.25s var(--alive);

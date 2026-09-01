@@ -9,6 +9,7 @@ import Contador from '../components/Contador.jsx';
 import Sparkline from '../components/Sparkline.jsx';
 import AnilloProgreso from '../components/AnilloProgreso.jsx';
 import Dinero from '../components/Dinero.jsx';
+import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
 
 function rangoUltimos30Dias() {
   const hasta = new Date();
@@ -23,18 +24,19 @@ export default function Resumen() {
   const [resumen, setResumen] = useState(null);
   const [tendencia, setTendencia] = useState([]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        setResumen(await api.resumen());
-        const { desde, hasta } = rangoUltimos30Dias();
-        const reporte = await api.reportes(desde, hasta);
-        setTendencia(reporte.porDia);
-      } catch (e) {
-        mostrarError(e.message);
-      }
-    })();
-  }, []);
+  async function cargar() {
+    try {
+      setResumen(await api.resumen());
+      const { desde, hasta } = rangoUltimos30Dias();
+      const reporte = await api.reportes(desde, hasta);
+      setTendencia(reporte.porDia);
+    } catch (e) {
+      mostrarError(e.message);
+    }
+  }
+
+  useEffect(() => { cargar(); }, []);
+  useRefrescarAlEnfocar(cargar);
 
   const maxDeuda = Math.max(1, ...(resumen?.topDeudores.map((c) => c.saldo) ?? [1]));
   const totalFiadoMes = tendencia.reduce((acc, d) => acc + d.fiado, 0);
