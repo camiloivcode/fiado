@@ -127,6 +127,9 @@ export default function Layout() {
           <main className="contenido">
             {pagina && (
               <header className="topbar">
+                <span className="topbar-icono" aria-hidden="true">
+                  <pagina.Icono size={20} strokeWidth={1.75} />
+                </span>
                 <h2 className="topbar-titulo">{pagina.etiqueta}</h2>
               </header>
             )}
