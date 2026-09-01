@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { queries, mapMovimiento } from '../db.js';
 import { diaLocal, OFFSET_HORAS_BOGOTA } from '../logic.js';
+import { asincrono } from '../asincrono.js';
 
 const router = Router();
 
-router.get('/', (req, res) => {
+router.get('/', asincrono(async (req, res) => {
   const { desde, hasta } = req.query;
   if (!desde || !hasta) {
     return res.status(400).json({ error: 'Los parámetros desde y hasta son obligatorios (YYYY-MM-DD)' });
@@ -18,8 +19,8 @@ router.get('/', (req, res) => {
   const desdeISO = `${desde}T${horaInicio}:00:00.000Z`;
   const hastaISO = `${hastaMasUnDia.toISOString().slice(0, 10)}T${horaFin}:59:59.999Z`;
 
-  const movimientos = queries.movimientosEnRango.all(desdeISO, hastaISO).map(mapMovimiento);
-  const cajas = queries.cajaEnRango.all(desdeISO, hastaISO);
+  const movimientos = (await queries.movimientosEnRango.all(desdeISO, hastaISO)).map(mapMovimiento);
+  const cajas = await queries.cajaEnRango.all(desdeISO, hastaISO);
 
   const porDia = {};
   for (const m of movimientos) {
@@ -33,6 +34,6 @@ router.get('/', (req, res) => {
     caja: cajas,
     porDia: Object.values(porDia).sort((a, b) => a.dia.localeCompare(b.dia)),
   });
-});
+}));
 
 export default router;

@@ -1,4 +1,13 @@
 services:
+  db-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fiado
+      POSTGRES_PASSWORD: fiado
+      POSTGRES_DB: fiado_test
+    ports:
+      - "5433:5432"
+
   api:
     build: ./backend
     ports:

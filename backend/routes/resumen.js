@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { queries, mapMovimiento } from '../db.js';
 import { saldoCliente, totalFiado, diaLocal, ultimosDiasLocales, finDiaLocalISO } from '../logic.js';
+import { asincrono } from '../asincrono.js';
 
 const router = Router();
 
-router.get('/', (req, res) => {
-  const clientes = queries.listarClientes.all();
-  const movimientos = queries.listarMovimientos.all().map(mapMovimiento);
-  const cajas = queries.listarCaja.all();
+router.get('/', asincrono(async (req, res) => {
+  const clientes = await queries.listarClientes.all();
+  const movimientos = (await queries.listarMovimientos.all()).map(mapMovimiento);
+  const cajas = await queries.listarCaja.all();
   const clientesConSaldo = clientes.map((c) => ({
     id: c.id,
     nombre: c.nombre,
@@ -48,6 +49,6 @@ router.get('/', (req, res) => {
       cajaHoy: cajaHoyTendencia,
     },
   });
-});
+}));
 
 export default router;

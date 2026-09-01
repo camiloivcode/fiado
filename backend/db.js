@@ -1,37 +1,72 @@
-import path from 'node:path';
-import fs from 'node:fs';
-import { DatabaseSync } from 'node:sqlite';
+import pg from 'pg';
 
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
-fs.mkdirSync(DATA_DIR, { recursive: true });
+const { Pool } = pg;
 
-export const db = new DatabaseSync(path.join(DATA_DIR, 'fiado.db'));
-db.exec('PRAGMA journal_mode = WAL');
-db.exec('PRAGMA foreign_keys = ON');
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  throw new Error('DATABASE_URL es obligatoria (postgres://usuario:clave@host:puerto/db)');
+}
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS clientes (
-    id TEXT PRIMARY KEY,
-    nombre TEXT NOT NULL,
-    telefono TEXT DEFAULT '',
-    creado_en TEXT NOT NULL
-  );
+// ponytail: schema separado por corrida para aislar tests sin tocar la DB compartida.
+// En producción PG_SCHEMA queda sin definir y usa el "public" por defecto de Postgres.
+const PG_SCHEMA = process.env.PG_SCHEMA || 'public';
 
-  CREATE TABLE IF NOT EXISTS movimientos (
-    id TEXT PRIMARY KEY,
-    cliente_id TEXT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
-    tipo TEXT NOT NULL CHECK (tipo IN ('fiado', 'abono')),
-    monto INTEGER NOT NULL CHECK (monto > 0),
-    fecha TEXT NOT NULL
-  );
+const { hostname } = new URL(DATABASE_URL);
+const esLocal = hostname === 'localhost' || hostname === '127.0.0.1';
 
-  CREATE TABLE IF NOT EXISTS caja (
-    id TEXT PRIMARY KEY,
-    fecha TEXT NOT NULL,
-    monto INTEGER NOT NULL CHECK (monto > 0),
-    nota TEXT DEFAULT ''
-  );
-`);
+export const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: esLocal ? false : { rejectUnauthorized: false },
+  ...(PG_SCHEMA !== 'public' ? { options: `-c search_path=${PG_SCHEMA}` } : {}),
+});
+
+export async function inicializarDB() {
+  if (PG_SCHEMA !== 'public') {
+    await pool.query(`CREATE SCHEMA IF NOT EXISTS "${PG_SCHEMA}"`);
+  }
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS clientes (
+      id TEXT PRIMARY KEY,
+      nombre TEXT NOT NULL,
+      telefono TEXT DEFAULT '',
+      creado_en TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS movimientos (
+      id TEXT PRIMARY KEY,
+      cliente_id TEXT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+      tipo TEXT NOT NULL CHECK (tipo IN ('fiado', 'abono')),
+      monto INTEGER NOT NULL CHECK (monto > 0),
+      fecha TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS caja (
+      id TEXT PRIMARY KEY,
+      fecha TEXT NOT NULL,
+      monto INTEGER NOT NULL CHECK (monto > 0),
+      nota TEXT DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS usuarios (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      nombre TEXT NOT NULL,
+      clave_hash TEXT NOT NULL,
+      creado_en TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS sesiones (
+      token_hash TEXT PRIMARY KEY,
+      usuario_id TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+      creado_en TEXT NOT NULL,
+      expira_en TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS ix_movimientos_cliente ON movimientos(cliente_id);
+    CREATE INDEX IF NOT EXISTS ix_movimientos_fecha ON movimientos(fecha);
+    CREATE INDEX IF NOT EXISTS ix_caja_fecha ON caja(fecha);
+  `);
+}
 
 export function generarId() {
   return crypto.randomUUID();
@@ -45,24 +80,37 @@ export function mapMovimiento(row) {
   return { id: row.id, clienteId: row.cliente_id, tipo: row.tipo, monto: row.monto, fecha: row.fecha };
 }
 
+function q(sql) {
+  return {
+    all: async (...params) => (await pool.query(sql, params)).rows,
+    get: async (...params) => (await pool.query(sql, params)).rows[0] ?? null,
+    run: async (...params) => {
+      await pool.query(sql, params);
+    },
+  };
+}
+
 export const queries = {
-  listarClientes: db.prepare('SELECT * FROM clientes ORDER BY nombre'),
-  crearCliente: db.prepare('INSERT INTO clientes (id, nombre, telefono, creado_en) VALUES (?, ?, ?, ?)'),
-  actualizarCliente: db.prepare('UPDATE clientes SET nombre = ? WHERE id = ?'),
-  eliminarCliente: db.prepare('DELETE FROM clientes WHERE id = ?'),
-  buscarCliente: db.prepare('SELECT * FROM clientes WHERE id = ?'),
+  listarClientes: q('SELECT * FROM clientes ORDER BY nombre'),
+  crearCliente: q('INSERT INTO clientes (id, nombre, telefono, creado_en) VALUES ($1, $2, $3, $4)'),
+  actualizarCliente: q('UPDATE clientes SET nombre = $1 WHERE id = $2'),
+  eliminarCliente: q('DELETE FROM clientes WHERE id = $1'),
+  buscarCliente: q('SELECT * FROM clientes WHERE id = $1'),
 
-  listarMovimientos: db.prepare('SELECT * FROM movimientos'),
-  movimientosDeCliente: db.prepare('SELECT * FROM movimientos WHERE cliente_id = ? ORDER BY fecha DESC'),
-  crearMovimiento: db.prepare('INSERT INTO movimientos (id, cliente_id, tipo, monto, fecha) VALUES (?, ?, ?, ?, ?)'),
-  eliminarMovimiento: db.prepare('DELETE FROM movimientos WHERE id = ?'),
-  buscarMovimiento: db.prepare('SELECT * FROM movimientos WHERE id = ?'),
-  movimientosEnRango: db.prepare('SELECT * FROM movimientos WHERE fecha >= ? AND fecha <= ? ORDER BY fecha'),
+  listarMovimientos: q('SELECT * FROM movimientos'),
+  movimientosDeCliente: q('SELECT * FROM movimientos WHERE cliente_id = $1 ORDER BY fecha DESC'),
+  crearMovimiento: q('INSERT INTO movimientos (id, cliente_id, tipo, monto, fecha) VALUES ($1, $2, $3, $4, $5)'),
+  eliminarMovimiento: q('DELETE FROM movimientos WHERE id = $1'),
+  buscarMovimiento: q('SELECT * FROM movimientos WHERE id = $1'),
+  movimientosEnRango: q('SELECT * FROM movimientos WHERE fecha >= $1 AND fecha <= $2 ORDER BY fecha'),
 
-  listarCaja: db.prepare('SELECT * FROM caja ORDER BY fecha DESC'),
-  crearCaja: db.prepare('INSERT INTO caja (id, fecha, monto, nota) VALUES (?, ?, ?, ?)'),
-  actualizarCaja: db.prepare('UPDATE caja SET monto = ?, nota = ? WHERE id = ?'),
-  eliminarCaja: db.prepare('DELETE FROM caja WHERE id = ?'),
-  buscarCaja: db.prepare('SELECT * FROM caja WHERE id = ?'),
-  cajaEnRango: db.prepare('SELECT * FROM caja WHERE fecha >= ? AND fecha <= ? ORDER BY fecha'),
+  listarCaja: q('SELECT * FROM caja ORDER BY fecha DESC'),
+  crearCaja: q('INSERT INTO caja (id, fecha, monto, nota) VALUES ($1, $2, $3, $4)'),
+  actualizarCaja: q('UPDATE caja SET monto = $1, nota = $2 WHERE id = $3'),
+  eliminarCaja: q('DELETE FROM caja WHERE id = $1'),
+  buscarCaja: q('SELECT * FROM caja WHERE id = $1'),
+  cajaEnRango: q('SELECT * FROM caja WHERE fecha >= $1 AND fecha <= $2 ORDER BY fecha'),
+
+  buscarUsuarioPorEmail: q('SELECT * FROM usuarios WHERE email = $1'),
+  crearUsuario: q('INSERT INTO usuarios (id, email, nombre, clave_hash, creado_en) VALUES ($1, $2, $3, $4, $5)'),
 };

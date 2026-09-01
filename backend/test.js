@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+import crypto from 'node:crypto';
 
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'fiado-test-'));
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'Define DATABASE_URL apuntando a un Postgres de pruebas (docker compose up -d db-test → ' +
+      'postgres://fiado:fiado@localhost:5433/fiado_test)'
+  );
+}
+process.env.PG_SCHEMA = 'fiado_test_' + crypto.randomUUID().slice(0, 8);
 process.env.NODE_ENV = 'test';
 
-const { queries, generarId, ahoraISO } = await import('./db.js');
+const { queries, generarId, ahoraISO, inicializarDB, pool } = await import('./db.js');
+await inicializarDB();
+const { hashClave } = await import('./auth.js');
 import {
   validarMonto,
   parsearMonto,
@@ -23,18 +29,18 @@ import {
 
 // --- db.js: capa de acceso a datos ---
 const clienteId = generarId();
-queries.crearCliente.run(clienteId, 'Doña Rosa', '', ahoraISO());
-const cliente = queries.buscarCliente.get(clienteId);
+await queries.crearCliente.run(clienteId, 'Doña Rosa', '', ahoraISO());
+const cliente = await queries.buscarCliente.get(clienteId);
 assert.equal(cliente.nombre, 'Doña Rosa');
 
 const movId = generarId();
-queries.crearMovimiento.run(movId, clienteId, 'fiado', 12500, ahoraISO());
-const movimientosCliente = queries.movimientosDeCliente.all(clienteId);
+await queries.crearMovimiento.run(movId, clienteId, 'fiado', 12500, ahoraISO());
+const movimientosCliente = await queries.movimientosDeCliente.all(clienteId);
 assert.equal(movimientosCliente.length, 1);
 assert.equal(movimientosCliente[0].monto, 12500);
 
-queries.eliminarCliente.run(clienteId);
-assert.equal(queries.movimientosDeCliente.all(clienteId).length, 0); // ON DELETE CASCADE
+await queries.eliminarCliente.run(clienteId);
+assert.equal((await queries.movimientosDeCliente.all(clienteId)).length, 0); // ON DELETE CASCADE
 
 // --- logic.js: aritmética pura ---
 assert.equal(validarMonto(12500), true);
@@ -100,6 +106,48 @@ const base = `http://localhost:${servidor.address().port}`;
 let respuesta = await fetch(`${base}/api/health`);
 assert.equal(respuesta.status, 200);
 assert.deepEqual(await respuesta.json(), { ok: true });
+
+// --- auth ---
+const claveHash = await hashClave('clave-super-secreta');
+await queries.crearUsuario.run(generarId(), 'tendero@fiado.test', 'Tendero', claveHash, ahoraISO());
+
+respuesta = await fetch(`${base}/api/auth/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: 'correo-malo@x.com', clave: 'lo-que-sea' }),
+});
+assert.equal(respuesta.status, 401); // usuario no existe
+
+respuesta = await fetch(`${base}/api/auth/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: 'tendero@fiado.test', clave: 'clave-incorrecta' }),
+});
+assert.equal(respuesta.status, 401); // clave incorrecta
+
+respuesta = await fetch(`${base}/api/clientes`);
+assert.equal(respuesta.status, 401); // ruta protegida sin token
+
+respuesta = await fetch(`${base}/api/clientes`, { headers: { Authorization: 'Bearer token-invalido' } });
+assert.equal(respuesta.status, 401); // token inválido
+
+respuesta = await fetch(`${base}/api/auth/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: 'tendero@fiado.test', clave: 'clave-super-secreta' }),
+});
+assert.equal(respuesta.status, 200);
+const { token } = await respuesta.json();
+assert.ok(token);
+
+// A partir de aquí, todas las peticiones a rutas de negocio llevan el token real —
+// las pruebas de abajo no cambian, solo se les inyecta el header automáticamente.
+const fetchSinAuth = fetch;
+globalThis.fetch = (url, opciones = {}) => {
+  const headers = { ...opciones.headers };
+  if (!('Authorization' in headers)) headers.Authorization = `Bearer ${token}`;
+  return fetchSinAuth(url, { ...opciones, headers });
+};
 
 // --- rutas /api/clientes ---
 respuesta = await fetch(`${base}/api/clientes`);
@@ -336,6 +384,15 @@ assert.equal(respuesta.status, 400);
 respuesta = await fetch(`${base}/api/ruta-inexistente`);
 assert.equal(respuesta.status, 404);
 
+// --- logout invalida la sesión ---
+respuesta = await fetch(`${base}/api/auth/logout`, { method: 'POST' });
+assert.equal(respuesta.status, 204);
+
+respuesta = await fetchSinAuth(`${base}/api/clientes`, { headers: { Authorization: `Bearer ${token}` } });
+assert.equal(respuesta.status, 401);
+
 servidor.close();
+await pool.query(`DROP SCHEMA IF EXISTS "${process.env.PG_SCHEMA}" CASCADE`);
+await pool.end();
 
 console.log('OK: todas las pruebas pasaron');
