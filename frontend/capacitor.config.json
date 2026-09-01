@@ -1,0 +1,8 @@
+{
+  "appId": "com.fiado.app",
+  "appName": "Fiado",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  }
+}
