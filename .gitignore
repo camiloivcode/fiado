@@ -1,3 +1,7 @@
 node_modules/
 dist/
 backend/data/
+.env
+.env.local
+*.apk
+.gradle/

@@ -96,20 +96,29 @@ export default function Resumen() {
       <div className="tarjetas">
         <div className="tarjeta debe">
           <span className="tarjeta-icono debe" aria-hidden="true"><Banknote className="icono" size={18} strokeWidth={1.75} /></span>
-          <span className="tarjeta-etiqueta">Total fiado</span>
+          <span className="tarjeta-etiqueta">Total fiado (Por cobrar)</span>
           <strong className="tarjeta-valor debe"><Contador valor={resumen.totalFiado} formatear={(v) => <Dinero valor={v} />} /></strong>
+          <span style={{ fontSize: 11, color: 'var(--texto-suave)', display: 'block', marginTop: 4 }}>
+            En {resumen.clientesConDeuda} {resumen.clientesConDeuda === 1 ? 'cuenta activa' : 'cuentas activas'}
+          </span>
           <Sparkline datos={resumen.tendencias.totalFiado} color="var(--rojo)" />
         </div>
         <div className="tarjeta">
           <span className="tarjeta-icono" aria-hidden="true"><Users className="icono" size={18} strokeWidth={1.75} /></span>
           <span className="tarjeta-etiqueta">Clientes que deben</span>
           <strong className="tarjeta-valor">{resumen.clientesConDeuda}</strong>
+          <span style={{ fontSize: 11, color: 'var(--texto-suave)', display: 'block', marginTop: 4 }}>
+            Deudores con saldo pendiente
+          </span>
           <Sparkline datos={resumen.tendencias.clientesConDeuda} color="var(--acento)" />
         </div>
         <div className="tarjeta favor">
           <span className="tarjeta-icono favor" aria-hidden="true"><Wallet className="icono" size={18} strokeWidth={1.75} /></span>
           <span className="tarjeta-etiqueta">Caja de hoy</span>
           <strong className="tarjeta-valor favor"><Contador valor={resumen.cajaHoy} formatear={(v) => <Dinero valor={v} />} /></strong>
+          <span style={{ fontSize: 11, color: 'var(--texto-suave)', display: 'block', marginTop: 4 }}>
+            Efectivo registrado en el turno
+          </span>
           <Sparkline datos={resumen.tendencias.cajaHoy} color="var(--verde)" />
         </div>
       </div>
@@ -117,7 +126,10 @@ export default function Resumen() {
       <div className="resumen-grid">
         <section className="panel">
           <div className="panel-cabecera">
-            <h3 className="panel-titulo">Tendencia (últimos 30 días)</h3>
+            <div>
+              <h3 className="panel-titulo">Tendencia de Fiados vs. Abonos</h3>
+              <span style={{ fontSize: 12, color: 'var(--texto-suave)' }}>Evolución diaria de los últimos 30 días</span>
+            </div>
           </div>
           <div className="panel-cuerpo">
             <TrendChart datos={tendencia} />
@@ -142,6 +154,9 @@ export default function Resumen() {
           <section className="panel">
             <div className="panel-cabecera">
               <h3 className="panel-titulo">Top deudores</h3>
+              <Link to="/clientes" style={{ fontSize: 12, color: 'var(--acento)', fontWeight: 600, textDecoration: 'none' }}>
+                Ver todos →
+              </Link>
             </div>
             <div className="panel-cuerpo sin-relleno">
               <ul className="lista-clientes" style={{ padding: '8px' }}>

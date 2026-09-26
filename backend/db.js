@@ -17,7 +17,16 @@ const esLocal = hostname === 'localhost' || hostname === '127.0.0.1';
 export const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: esLocal ? false : { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
   ...(PG_SCHEMA !== 'public' ? { options: `-c search_path=${PG_SCHEMA}` } : {}),
+});
+
+// En entornos serverless como Neon, las conexiones inactivas pueden suspenderse.
+// Escuchar 'error' en el pool evita que caídas de conexiones inactivas provoquen excepciones no controladas.
+pool.on('error', (err) => {
+  console.error('Aviso en pool Postgres (inactivo):', err.message);
 });
 
 export async function inicializarDB() {
@@ -93,7 +102,7 @@ function q(sql) {
 export const queries = {
   listarClientes: q('SELECT * FROM clientes ORDER BY nombre'),
   crearCliente: q('INSERT INTO clientes (id, nombre, telefono, creado_en) VALUES ($1, $2, $3, $4)'),
-  actualizarCliente: q('UPDATE clientes SET nombre = $1 WHERE id = $2'),
+  actualizarCliente: q('UPDATE clientes SET nombre = $1, telefono = $2 WHERE id = $3'),
   eliminarCliente: q('DELETE FROM clientes WHERE id = $1'),
   buscarCliente: q('SELECT * FROM clientes WHERE id = $1'),
 
@@ -113,4 +122,5 @@ export const queries = {
 
   buscarUsuarioPorEmail: q('SELECT * FROM usuarios WHERE email = $1'),
   crearUsuario: q('INSERT INTO usuarios (id, email, nombre, clave_hash, creado_en) VALUES ($1, $2, $3, $4, $5)'),
+  contarUsuarios: q('SELECT COUNT(*)::int AS total FROM usuarios'),
 };

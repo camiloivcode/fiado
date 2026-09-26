@@ -9,15 +9,36 @@ import cajaRouter from './routes/caja.js';
 import resumenRouter from './routes/resumen.js';
 import reportesRouter from './routes/reportes.js';
 
-const ORIGENES_POR_DEFECTO = ['https://localhost', 'capacitor://localhost', 'http://localhost:5173'];
-const origenesPermitidos = process.env.ORIGENES_PERMITIDOS
-  ? process.env.ORIGENES_PERMITIDOS.split(',').map((o) => o.trim())
-  : ORIGENES_POR_DEFECTO;
+const ORIGENES_POR_DEFECTO = [
+  'https://localhost',
+  'capacitor://localhost',
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://localhost:4000',
+];
+
+function verificarOrigen(origen, cb) {
+  // Peticiones locales o herramientas sin cabecera Origin (curl, capacitor native, etc.)
+  if (!origen) return cb(null, true);
+  if (process.env.ORIGENES_PERMITIDOS === '*') return cb(null, true);
+
+  const permitidos = process.env.ORIGENES_PERMITIDOS
+    ? process.env.ORIGENES_PERMITIDOS.split(',').map((o) => o.trim().replace(/\/$/, ''))
+    : ORIGENES_POR_DEFECTO;
+
+  const origenLimpio = origen.replace(/\/$/, '');
+  const permitido =
+    permitidos.includes(origenLimpio) ||
+    origenLimpio.startsWith('http://localhost:') ||
+    origenLimpio.startsWith('http://127.0.0.1:');
+
+  cb(null, permitido);
+}
 
 export function crearApp() {
   const app = express();
-  app.set('trust proxy', 1); // Render corre detrás de un proxy; req.ip debe ser el real, no el del proxy
-  app.use(cors({ origin: (origen, cb) => cb(null, !origen || origenesPermitidos.includes(origen)) }));
+  app.set('trust proxy', 1); // Render corre detrás de un proxy inverso; req.ip debe ser el del cliente
+  app.use(cors({ origin: verificarOrigen, credentials: true }));
   app.use(express.json({ limit: '100kb' }));
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));
@@ -46,5 +67,17 @@ if (process.env.NODE_ENV !== 'test') {
   await inicializarDB();
   const app = crearApp();
   const PORT = process.env.PORT || 4000;
-  app.listen(PORT, () => console.log(`API escuchando en :${PORT}`));
+  const servidor = app.listen(PORT, () => console.log(`API escuchando en :${PORT}`));
+
+  const cerrar = async () => {
+    console.log('Cerrando servidor de forma segura...');
+    servidor.close(async () => {
+      const { pool } = await import('./db.js');
+      await pool.end();
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', cerrar);
+  process.on('SIGINT', cerrar);
 }

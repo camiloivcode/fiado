@@ -1,9 +1,42 @@
 import { Router } from 'express';
-import { queries } from '../db.js';
-import { verificarClave, crearSesion, borrarSesion, usuarioDeSesion, limitarIntentosLogin } from '../auth.js';
+import { queries, generarId, ahoraISO } from '../db.js';
+import { hashClave, verificarClave, crearSesion, borrarSesion, usuarioDeSesion, limitarIntentosLogin } from '../auth.js';
 import { asincrono } from '../asincrono.js';
 
 const router = Router();
+
+router.get('/estado', asincrono(async (req, res) => {
+  const count = await queries.contarUsuarios.get();
+  res.json({ inicializado: (count?.total ?? 0) > 0 });
+}));
+
+router.post('/setup', asincrono(async (req, res) => {
+  const count = await queries.contarUsuarios.get();
+  if ((count?.total ?? 0) > 0) {
+    return res.status(400).json({ error: 'El sistema ya ha sido inicializado' });
+  }
+  const { email, nombre, clave } = req.body;
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ error: 'Ingresa un correo electrónico válido' });
+  }
+  if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
+    return res.status(400).json({ error: 'Ingresa el nombre del administrador o negocio' });
+  }
+  if (!clave || typeof clave !== 'string' || clave.length < 8) {
+    return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+  }
+
+  const emailNorm = email.trim().toLowerCase();
+  const claveHash = await hashClave(clave);
+  const nuevoId = generarId();
+  await queries.crearUsuario.run(nuevoId, emailNorm, nombre.trim(), claveHash, ahoraISO());
+
+  const token = await crearSesion(nuevoId);
+  res.status(201).json({
+    token,
+    usuario: { id: nuevoId, nombre: nombre.trim(), email: emailNorm },
+  });
+}));
 
 router.post('/login', limitarIntentosLogin, asincrono(async (req, res) => {
   const { email, clave } = req.body;

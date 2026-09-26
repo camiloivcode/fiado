@@ -553,3 +553,176 @@ a { color: inherit; }
 @media (min-width: 1280px) {
   .resumen-grid { grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr); align-items: start; }
 }
+
+/* ---------- mejoras UI / UX Obsidian Ledger ---------- */
+.tienda-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px; padding: 4px 12px; font-size: 12px; color: #fff; font-weight: 600;
+}
+.tienda-punto {
+  width: 7px; height: 7px; border-radius: 999px; background: #12b76a;
+  box-shadow: 0 0 8px #12b76a;
+}
+.btn-fiar-rapido {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--rojo); color: #fff; border: none; border-radius: var(--radio-control);
+  padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.btn-fiar-rapido:hover { background: #912018; }
+.btn-fiar-rapido:active { transform: scale(0.96); }
+
+.sidebar-footer {
+  margin-top: auto; padding: 14px; border-top: 1px solid var(--sidebar-borde);
+  display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: var(--sidebar-texto);
+}
+.sidebar-turno-badge {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--sidebar-borde);
+  border-radius: var(--radio-control); color: #fff; font-size: 12px; font-weight: 600;
+}
+.sidebar.colapsado .sidebar-footer { display: none; }
+
+.filtros-tabs {
+  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px;
+  scrollbar-width: none;
+}
+.filtros-tabs::-webkit-scrollbar { display: none; }
+.tab-filtro {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+  border-radius: 999px; border: 1px solid var(--borde); background: var(--superficie);
+  font-size: 13px; font-weight: 600; color: var(--texto-suave); cursor: pointer;
+  white-space: nowrap; transition: all 0.15s ease;
+}
+.tab-filtro:hover { border-color: var(--acento); color: var(--texto); }
+.tab-filtro.activo {
+  background: var(--acento); color: #fff; border-color: var(--acento);
+  box-shadow: 0 2px 6px rgba(31, 79, 216, 0.25);
+}
+.tab-filtro.alerta.activo {
+  background: var(--rojo); border-color: var(--rojo); color: #fff;
+}
+.badge-contador {
+  font-size: 11px; padding: 1px 6px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08); font-weight: 700;
+}
+.tab-filtro.activo .badge-contador {
+  background: rgba(255, 255, 255, 0.25); color: #fff;
+}
+
+.btn-whatsapp {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #25d366; color: #fff; border: none; border-radius: var(--radio-control);
+  padding: 8px 14px; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.btn-whatsapp:hover { background: #20ba59; color: #fff; }
+.btn-whatsapp:active { transform: scale(0.96); }
+
+.chips-monto {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0 10px;
+}
+.chip-monto {
+  padding: 8px 4px; border: 1px solid var(--borde); border-radius: var(--radio-control);
+  background: var(--fondo); color: var(--texto); font-size: 12px; font-weight: 700;
+  cursor: pointer; text-align: center; transition: all 0.15s ease; font-variant-numeric: tabular-nums;
+}
+.chip-monto:hover { border-color: var(--acento); background: var(--acento-suave); color: var(--acento); }
+.chip-monto.total { grid-column: span 2; border-color: var(--verde); color: var(--verde); background: var(--verde-suave); }
+
+.calculadora-caja {
+  background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio);
+  padding: 16px; margin: 16px 0; box-shadow: var(--sombra);
+}
+.calculadora-cabecera {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+  flex-wrap: wrap; gap: 8px;
+}
+.calculadora-titulo {
+  font-size: 14px; font-weight: 700; color: var(--texto); display: flex; align-items: center; gap: 6px;
+}
+.calculadora-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 8px;
+}
+.calculadora-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 4px;
+  background: var(--fondo); padding: 8px 6px; border-radius: 8px; border: 1px solid var(--borde);
+  text-align: center;
+}
+.calculadora-denominacion { font-size: 12px; font-weight: 800; color: var(--texto); }
+.calculadora-stepper {
+  display: flex; align-items: center; gap: 4px; margin: 2px 0;
+}
+.btn-calc-step {
+  width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--borde);
+  background: var(--superficie); color: var(--texto); font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: all 0.1s ease;
+}
+.btn-calc-step:hover { background: var(--acento-suave); border-color: var(--acento); color: var(--acento); }
+.btn-calc-step:active { transform: scale(0.92); }
+.calculadora-cantidad {
+  width: 36px; padding: 2px 0; text-align: center; font-size: 14px; font-weight: 700;
+  border: none; background: transparent; color: var(--texto); font-variant-numeric: tabular-nums;
+}
+.calculadora-subtotal {
+  font-size: 11px; font-weight: 700; color: var(--verde); font-variant-numeric: tabular-nums;
+}
+.calculadora-barra-acciones {
+  display: flex; align-items: center; justify-content: space-between; margin-top: 14px;
+  padding-top: 12px; border-top: 1px solid var(--borde); flex-wrap: wrap; gap: 10px;
+}
+.calculadora-gran-total {
+  font-size: 14px; font-weight: 600; color: var(--texto-suave);
+}
+.calculadora-gran-total strong {
+  font-size: 18px; font-weight: 800; color: var(--texto); margin-left: 6px;
+}
+
+/* ---------- métricas de caja ---------- */
+.caja-kpis-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;
+}
+.caja-kpi-card {
+  background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio);
+  padding: 14px 16px; box-shadow: var(--sombra); display: flex; align-items: flex-start; justify-content: space-between;
+}
+.caja-kpi-info { display: flex; flex-direction: column; gap: 4px; }
+.caja-kpi-etiqueta { font-size: 12px; font-weight: 600; color: var(--texto-suave); display: flex; align-items: center; gap: 5px; }
+.caja-kpi-valor { font-size: 20px; font-weight: 800; color: var(--texto); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.caja-kpi-sub { font-size: 11px; color: var(--texto-suave); }
+.caja-kpi-icono {
+  width: 36px; height: 36px; border-radius: 8px; background: var(--fondo);
+  display: flex; align-items: center; justify-content: center; color: var(--acento);
+}
+
+/* ---------- presets de fechas en reportes ---------- */
+.presetes-fechas {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.btn-preset {
+  padding: 5px 12px; border-radius: 999px; border: 1px solid var(--borde);
+  background: var(--superficie); color: var(--texto-suave); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s ease;
+}
+.btn-preset:hover { border-color: var(--acento); color: var(--acento); }
+.btn-preset.activo { background: var(--acento-suave); border-color: var(--acento); color: var(--acento); font-weight: 700; }
+
+.reporte-kpis-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;
+}
+.reporte-kpi-card {
+  background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio);
+  padding: 12px 14px; box-shadow: var(--sombra);
+}
+.reporte-kpi-etiqueta { font-size: 11px; font-weight: 600; color: var(--texto-suave); margin-bottom: 4px; }
+.reporte-kpi-valor { font-size: 18px; font-weight: 800; color: var(--texto); font-variant-numeric: tabular-nums; }
+.reporte-kpi-valor.debe { color: var(--rojo); }
+.reporte-kpi-valor.favor { color: var(--verde); }
+
+@media (max-width: 640px) {
+  .tienda-pill { display: none !important; }
+}
+
+

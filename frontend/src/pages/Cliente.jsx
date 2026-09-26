@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Trash2, UserRoundX, Pencil } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Trash2, UserRoundX, Pencil, Phone, MessageCircle, Share2 } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
@@ -16,9 +16,10 @@ export default function Cliente() {
   const { mostrarError, mostrarExito } = useToast();
   const [cliente, setCliente] = useState(null);
   const [movimientos, setMovimientos] = useState([]);
-  const [dialogo, setDialogo] = useState(null);
+  const [dialogo, setDialogo] = useState(null); // 'fiado' | 'abono' | 'editar'
   const [monto, setMonto] = useState('');
   const [nombreEditado, setNombreEditado] = useState('');
+  const [telefonoEditado, setTelefonoEditado] = useState('');
   const [movABorrar, setMovABorrar] = useState(null);
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
 
@@ -50,14 +51,14 @@ export default function Cliente() {
     }
   }
 
-  async function guardarNombre(evento) {
+  async function guardarEdicion(evento) {
     evento.preventDefault();
     const nombre = nombreEditado.trim();
     if (!nombre) return;
     try {
-      await api.editarCliente(id, nombre);
+      await api.editarCliente(id, nombre, telefonoEditado.trim());
       setDialogo(null);
-      mostrarExito('Nombre actualizado');
+      mostrarExito('Cliente actualizado');
       cargar();
     } catch (e) {
       mostrarError(e.message);
@@ -118,17 +119,44 @@ export default function Cliente() {
       </div>
     );
   }
+
   const saldo = cliente.saldo;
   const estado = saldo > 0 ? 'debe' : saldo < 0 ? 'favor' : 'neutro';
   const historialSaldo = [...movimientos]
     .reverse()
     .reduce((acc, m) => [...acc, (acc.at(-1) ?? 0) + (m.tipo === 'fiado' ? m.monto : -m.monto)], []);
 
+  // WhatsApp reminder link
+  const telefonoLimpio = (cliente.telefono || '').replace(/\D/g, '');
+  const mensajeWA = encodeURIComponent(
+    `Hola ${cliente.nombre}, cordial saludo. Te comparto el resumen de tu cuenta en Fiado:\n` +
+    `• Saldo pendiente: ${formatearPesos(Math.max(0, saldo))}\n` +
+    `¡Muchas gracias por tu confianza!`
+  );
+  const urlWhatsApp = telefonoLimpio
+    ? `https://wa.me/${telefonoLimpio.startsWith('57') ? telefonoLimpio : `57${telefonoLimpio}`}?text=${mensajeWA}`
+    : null;
+
   return (
     <div className="pagina">
-      <button className="btn-volver" onClick={() => navigate('/clientes')}>
-        <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" /> Clientes
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+        <button className="btn-volver" onClick={() => navigate('/clientes')} style={{ margin: 0 }}>
+          <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" /> Volver a Clientes
+        </button>
+
+        {urlWhatsApp && (
+          <a
+            href={urlWhatsApp}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-whatsapp"
+            title="Enviar estado de cuenta por WhatsApp"
+          >
+            <MessageCircle size={15} strokeWidth={2} /> WhatsApp
+          </a>
+        )}
+      </div>
+
       <div className="cliente-hero">
         <span className={`avatar avatar-grande ${claseAvatar(cliente.nombre)}`} aria-hidden="true">
           {cliente.nombre.slice(0, 2).toUpperCase()}
@@ -138,37 +166,58 @@ export default function Cliente() {
             {cliente.nombre}
             <button
               className="btn-editar-nombre"
-              onClick={() => { setNombreEditado(cliente.nombre); setDialogo('nombre'); }}
-              aria-label="Editar nombre"
+              onClick={() => {
+                setNombreEditado(cliente.nombre);
+                setTelefonoEditado(cliente.telefono || '');
+                setDialogo('editar');
+              }}
+              aria-label="Editar cliente"
+              title="Editar datos del cliente"
             >
               <Pencil size={15} strokeWidth={1.75} />
             </button>
           </h2>
-          <span className={`pill pill-${estado}`}>
-            {estado === 'debe' ? 'Debe' : estado === 'favor' ? 'A favor' : 'Al día'}
-          </span>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span className={`pill pill-${estado}`}>
+              {estado === 'debe' ? 'Debe' : estado === 'favor' ? 'A favor' : 'Al día'}
+            </span>
+            {cliente.telefono && (
+              <span style={{ fontSize: 13, color: 'var(--texto-suave)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Phone size={12} strokeWidth={1.75} /> {cliente.telefono}
+              </span>
+            )}
+          </div>
         </div>
       </div>
+
       <div className={`saldo-grande ${saldo > 0 ? 'debe' : saldo < 0 ? 'favor' : ''}`}>
         <Dinero valor={Math.abs(saldo)} />
-        <small>{saldo < 0 ? 'a favor' : saldo === 0 ? 'al día' : 'debe'}</small>
+        <small>{saldo < 0 ? 'a favor' : saldo === 0 ? 'cuenta al día' : 'saldo pendiente por pagar'}</small>
         <Sparkline
           datos={historialSaldo}
           color={saldo > 0 ? 'var(--rojo)' : saldo < 0 ? 'var(--verde)' : 'var(--texto-suave)'}
           className="sparkline-saldo"
         />
       </div>
+
       <div className="acciones">
         <button className="btn-fiar" onClick={() => setDialogo('fiado')}>
-          <ArrowUpRight size={18} strokeWidth={2} aria-hidden="true" /> Fiar
+          <ArrowUpRight size={18} strokeWidth={2} aria-hidden="true" /> + Fiar Producto
         </button>
         <button className="btn-abonar" onClick={() => setDialogo('abono')}>
-          <ArrowDownLeft size={18} strokeWidth={2} aria-hidden="true" /> Abonar
+          <ArrowDownLeft size={18} strokeWidth={2} aria-hidden="true" /> + Abonar Dinero
         </button>
       </div>
+
       <section className="panel">
         <div className="panel-cabecera">
-          <h3 className="panel-titulo">Historial</h3>
+          <div>
+            <h3 className="panel-titulo">Libreta de Movimientos</h3>
+            <span style={{ fontSize: 12, color: 'var(--texto-suave)' }}>
+              {movimientos.length} {movimientos.length === 1 ? 'registro' : 'registros'}
+            </span>
+          </div>
         </div>
         <div className="panel-cuerpo sin-relleno">
           <ul className="historial" style={{ padding: '0 18px' }}>
@@ -176,13 +225,15 @@ export default function Cliente() {
               <li key={m.id} className="fila-mov">
                 <span className={`tipo ${m.tipo}`}>
                   {m.tipo === 'fiado' ? <ArrowUpRight size={13} strokeWidth={2.5} aria-hidden="true" /> : <ArrowDownLeft size={13} strokeWidth={2.5} aria-hidden="true" />}
-                  {m.tipo === 'fiado' ? 'Fió' : 'Abonó'}
+                  {m.tipo === 'fiado' ? 'Fiado' : 'Abono'}
                 </span>
-                <span className="monto">{formatearPesos(m.monto)}</span>
+                <span className="monto" style={{ color: m.tipo === 'fiado' ? 'var(--rojo)' : 'var(--verde)' }}>
+                  {m.tipo === 'fiado' ? '+' : '-'}{formatearPesos(m.monto)}
+                </span>
                 <span className="fecha">
                   {new Date(m.fecha).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </span>
-                <button className="btn-borrar" onClick={() => setMovABorrar(m.id)} aria-label="Eliminar movimiento">
+                <button className="btn-borrar" onClick={() => setMovABorrar(m.id)} aria-label="Eliminar movimiento" title="Eliminar registro">
                   <Trash2 size={16} strokeWidth={1.75} />
                 </button>
               </li>
@@ -190,37 +241,53 @@ export default function Cliente() {
             {!movimientos.length && (
               <li className="vacio">
                 <UserRoundX className="icono" size={28} strokeWidth={1.5} aria-hidden="true" />
-                Sin movimientos todavía.
+                Sin movimientos todavía. Usa "+ Fiar" o "+ Abonar" arriba.
               </li>
             )}
           </ul>
         </div>
       </section>
+
       <button className="btn-eliminar-cliente" onClick={() => setConfirmarEliminar(true)}>
         <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" /> Eliminar cliente
       </button>
 
-      {dialogo === 'nombre' && (
+      {dialogo === 'editar' && (
         <div className="overlay" onClick={(e) => e.target === e.currentTarget && setDialogo(null)}>
-          <form className="dialogo" onSubmit={guardarNombre}>
+          <form className="dialogo" onSubmit={guardarEdicion}>
             <div className="dialogo-cabecera">
               <span className="dialogo-icono" aria-hidden="true">
                 <Pencil size={18} strokeWidth={2} />
               </span>
-              <h2>Editar nombre</h2>
+              <h2>Editar cliente</h2>
             </div>
-            <input
-              type="text"
-              autoFocus
-              placeholder="Nombre"
-              value={nombreEditado}
-              onChange={(e) => setNombreEditado(e.target.value)}
-              required
-              style={{ textAlign: 'left', fontSize: 15 }}
-            />
+            <div className="campo">
+              <label htmlFor="nombre-editado" style={{ fontSize: 13, color: 'var(--texto-suave)' }}>Nombre completo *</label>
+              <input
+                id="nombre-editado"
+                type="text"
+                autoFocus
+                placeholder="Nombre"
+                value={nombreEditado}
+                onChange={(e) => setNombreEditado(e.target.value)}
+                required
+                style={{ textAlign: 'left', fontSize: 15 }}
+              />
+            </div>
+            <div className="campo">
+              <label htmlFor="telefono-editado" style={{ fontSize: 13, color: 'var(--texto-suave)' }}>Teléfono / WhatsApp</label>
+              <input
+                id="telefono-editado"
+                type="tel"
+                placeholder="Ej: 312 456 7890"
+                value={telefonoEditado}
+                onChange={(e) => setTelefonoEditado(e.target.value)}
+                style={{ textAlign: 'left', fontSize: 15 }}
+              />
+            </div>
             <div className="dialogo-acciones">
               <button type="button" onClick={() => setDialogo(null)}>Cancelar</button>
-              <button type="submit">Guardar</button>
+              <button type="submit">Guardar cambios</button>
             </div>
           </form>
         </div>
@@ -235,8 +302,12 @@ export default function Cliente() {
                   ? <ArrowUpRight size={18} strokeWidth={2} />
                   : <ArrowDownLeft size={18} strokeWidth={2} />}
               </span>
-              <h2>{dialogo === 'fiado' ? 'Fiar' : 'Abonar'}</h2>
+              <div>
+                <h2>{dialogo === 'fiado' ? 'Nuevo Fiado' : 'Registrar Abono'}</h2>
+                <span style={{ fontSize: 12, color: 'var(--texto-suave)' }}>{cliente.nombre}</span>
+              </div>
             </div>
+
             <MontoInput
               autoFocus
               placeholder="0"
@@ -244,9 +315,29 @@ export default function Cliente() {
               onChange={setMonto}
               required
             />
+
+            {/* Chips rápidos de cantidades comunes en tiendas */}
+            <div className="chips-monto">
+              <button type="button" className="chip-monto" onClick={() => setMonto('5000')}>$5.000</button>
+              <button type="button" className="chip-monto" onClick={() => setMonto('10000')}>$10.000</button>
+              <button type="button" className="chip-monto" onClick={() => setMonto('20000')}>$20.000</button>
+              <button type="button" className="chip-monto" onClick={() => setMonto('50000')}>$50.000</button>
+              {dialogo === 'abono' && saldo > 0 && (
+                <button
+                  type="button"
+                  className="chip-monto total"
+                  onClick={() => setMonto(String(saldo))}
+                >
+                  Pagar total ({formatearPesos(saldo)})
+                </button>
+              )}
+            </div>
+
             <div className="dialogo-acciones">
               <button type="button" onClick={() => setDialogo(null)}>Cancelar</button>
-              <button type="submit">Guardar</button>
+              <button type="submit">
+                {dialogo === 'fiado' ? 'Guardar Fiado' : 'Guardar Abono'}
+              </button>
             </div>
           </form>
         </div>
@@ -255,7 +346,7 @@ export default function Cliente() {
       {movABorrar && (
         <ConfirmDialog
           titulo="Eliminar movimiento"
-          mensaje="Esta acción no se puede deshacer."
+          mensaje="Esta acción recalculará el saldo del cliente de inmediato. ¿Deseas continuar?"
           textoConfirmar="Eliminar"
           onConfirmar={confirmarBorrarMovimiento}
           onCancelar={() => setMovABorrar(null)}
@@ -265,7 +356,7 @@ export default function Cliente() {
       {confirmarEliminar && (
         <ConfirmDialog
           titulo={`Eliminar a ${cliente.nombre}`}
-          mensaje="Se borra todo su historial de movimientos. Esta acción no se puede deshacer."
+          mensaje="Se borrará todo su historial de fiados y abonos. Esta acción no se puede deshacer."
           textoConfirmar="Eliminar cliente"
           onConfirmar={confirmarEliminarCliente}
           onCancelar={() => setConfirmarEliminar(false)}

@@ -1,6 +1,6 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, Link } from 'react-router-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { LayoutDashboard, Users, Wallet, FileBarChart, Menu, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Wallet, FileBarChart, Menu, LogOut, Plus, Calendar, Store } from 'lucide-react';
 import { api } from '../api.js';
 import { borrarToken } from '../sesion.js';
 import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
@@ -13,7 +13,7 @@ const ENLACES = [
 ];
 
 const FECHA_HOY = new Date().toLocaleDateString('es-CO', {
-  weekday: 'long', day: 'numeric', month: 'long',
+  weekday: 'short', day: 'numeric', month: 'short',
 });
 
 function activoPara(pathname, to) {
@@ -34,8 +34,6 @@ function Navegacion({ variante, colapsado }) {
     }
     recalcular();
     window.addEventListener('resize', recalcular);
-    // el sidebar tarda ~250ms en transicionar su ancho al colapsar/expandir;
-    // se recalcula de nuevo una vez asentado para que el indicador quede exacto.
     const id = setTimeout(recalcular, 280);
     return () => {
       window.removeEventListener('resize', recalcular);
@@ -69,6 +67,7 @@ export default function Layout() {
   const pagina = ENLACES.find((e) => e.to === location.pathname);
   const [colapsado, setColapsado] = useState(() => localStorage.getItem('sidebarColapsado') === '1');
   const [conectado, setConectado] = useState(true);
+  const [usuario, setUsuario] = useState(null);
 
   function alternarSidebar() {
     setColapsado((actual) => {
@@ -82,6 +81,10 @@ export default function Layout() {
     try {
       await api.salud();
       setConectado(true);
+      if (!usuario) {
+        const u = await api.yo();
+        setUsuario(u);
+      }
     } catch {
       setConectado(false);
     }
@@ -110,18 +113,33 @@ export default function Layout() {
         >
           <Menu size={20} strokeWidth={2} aria-hidden="true" />
         </button>
-        <span className="marca">
+        <Link to="/" style={{ textDecoration: 'none' }} className="marca">
           <span className="marca-icono" aria-hidden="true">
             <Wallet size={18} strokeWidth={2} />
           </span>
           <span className="marca-texto">Fiado</span>
-        </span>
+        </Link>
+
+        {usuario?.nombre && (
+          <span className="tienda-pill" title="Negocio activo">
+            <span className="tienda-punto" aria-hidden="true" />
+            <span>{usuario.nombre}</span>
+          </span>
+        )}
+
         <span className="barra-superior-derecha">
+          <Link to="/clientes" className="btn-fiar-rapido" title="Registrar nuevo fiado">
+            <Plus size={15} strokeWidth={2.5} />
+            <span style={{ display: 'inline' }}>Fiar</span>
+          </Link>
           <span
             className={`indicador-conexion ${conectado ? '' : 'desconectado'}`}
-            title={conectado ? 'Conectado' : 'Sin conexión con el servidor'}
+            title={conectado ? 'Conectado al servidor' : 'Sin conexión con el servidor'}
           />
-          <span className="barra-superior-fecha">{FECHA_HOY}</span>
+          <span className="barra-superior-fecha" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Calendar size={13} strokeWidth={1.75} aria-hidden="true" />
+            {FECHA_HOY}
+          </span>
           <button className="btn-colapsar" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión">
             <LogOut size={18} strokeWidth={2} aria-hidden="true" />
           </button>
@@ -130,6 +148,17 @@ export default function Layout() {
       <div className="shell">
         <aside className={`sidebar ${colapsado ? 'colapsado' : ''}`}>
           <Navegacion variante="sidebar" colapsado={colapsado} />
+          <div className="sidebar-footer">
+            <div className="sidebar-turno-badge">
+              <span className="tienda-punto" aria-hidden="true" />
+              <span>Turno: Caja Abierta</span>
+            </div>
+            {usuario?.nombre && (
+              <span style={{ fontSize: 11, opacity: 0.7, paddingLeft: 4 }}>
+                {usuario.nombre}
+              </span>
+            )}
+          </div>
         </aside>
         <main className="contenido">
           {pagina && (

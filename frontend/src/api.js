@@ -25,12 +25,20 @@ async function solicitar(ruta, opciones = {}) {
 
 export const api = {
   salud: () => solicitar('/api/health'),
+  estadoAuth: () => solicitar('/api/auth/estado'),
+  setupAuth: (email, nombre, clave) =>
+    solicitar('/api/auth/setup', { method: 'POST', body: JSON.stringify({ email, nombre, clave }) }),
   login: (email, clave) => solicitar('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, clave }) }),
   logout: () => solicitar('/api/auth/logout', { method: 'POST' }),
   yo: () => solicitar('/api/auth/yo'),
   listarClientes: () => solicitar('/api/clientes'),
-  crearCliente: (nombre) => solicitar('/api/clientes', { method: 'POST', body: JSON.stringify({ nombre }) }),
-  editarCliente: (id, nombre) => solicitar(`/api/clientes/${id}`, { method: 'PATCH', body: JSON.stringify({ nombre }) }),
+  crearCliente: (nombre, telefono = '') =>
+    solicitar('/api/clientes', { method: 'POST', body: JSON.stringify({ nombre, telefono }) }),
+  editarCliente: (id, nombre, telefono) =>
+    solicitar(`/api/clientes/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ nombre, ...(telefono !== undefined ? { telefono } : {}) }),
+    }),
   eliminarCliente: (id) => solicitar(`/api/clientes/${id}`, { method: 'DELETE' }),
   movimientosDeCliente: (id) => solicitar(`/api/clientes/${id}/movimientos`),
   crearMovimiento: (clienteId, tipo, monto) =>

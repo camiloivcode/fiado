@@ -22,7 +22,8 @@ router.get('/', asincrono(async (req, res) => {
 router.post('/', asincrono(async (req, res) => {
   const nombre = typeof req.body.nombre === 'string' ? req.body.nombre.trim() : '';
   if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
-  const cliente = { id: generarId(), nombre, telefono: '', creadoEn: ahoraISO() };
+  const telefono = typeof req.body.telefono === 'string' ? req.body.telefono.trim() : '';
+  const cliente = { id: generarId(), nombre, telefono, creadoEn: ahoraISO() };
   await queries.crearCliente.run(cliente.id, cliente.nombre, cliente.telefono, cliente.creadoEn);
   res.status(201).json({ id: cliente.id, nombre: cliente.nombre, telefono: cliente.telefono, saldo: 0 });
 }));
@@ -30,10 +31,11 @@ router.post('/', asincrono(async (req, res) => {
 router.patch('/:id', asincrono(async (req, res) => {
   const cliente = await queries.buscarCliente.get(req.params.id);
   if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
-  const nombre = typeof req.body.nombre === 'string' ? req.body.nombre.trim() : '';
+  const nombre = typeof req.body.nombre === 'string' ? req.body.nombre.trim() : cliente.nombre;
   if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
-  await queries.actualizarCliente.run(nombre, req.params.id);
-  res.json({ id: cliente.id, nombre, telefono: cliente.telefono });
+  const telefono = typeof req.body.telefono === 'string' ? req.body.telefono.trim() : (cliente.telefono || '');
+  await queries.actualizarCliente.run(nombre, telefono, req.params.id);
+  res.json({ id: cliente.id, nombre, telefono });
 }));
 
 router.get('/:id/movimientos', asincrono(async (req, res) => {

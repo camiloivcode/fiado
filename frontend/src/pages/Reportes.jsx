@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, FileX, Download, Rows3 } from 'lucide-react';
+import { Search, FileX, Download, Rows3, Calendar, ArrowUpRight, ArrowDownLeft, Wallet, TrendingUp } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -11,6 +11,18 @@ import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
 
 function hoyISO() {
   return new Date().toLocaleDateString('en-CA');
+}
+
+function diasAtrasISO(dias) {
+  const d = new Date();
+  d.setDate(d.getDate() - dias);
+  return d.toLocaleDateString('en-CA');
+}
+
+function primerDiaMesISO() {
+  const d = new Date();
+  d.setDate(1);
+  return d.toLocaleDateString('en-CA');
 }
 
 function celdaCSV(valor) {
@@ -28,11 +40,9 @@ function filasCSVDe(reporte) {
     .join('\r\n');
 }
 
-// El atributo `download` sobre una URL blob: lo ignora el WebView de Android — no
-// descarga nada. En la APK se escribe el archivo y se abre el selector de compartir.
 async function exportarCSV(reporte, desde, hasta) {
   const nombre = `reporte_${desde}_a_${hasta}.csv`;
-  const contenido = `﻿${filasCSVDe(reporte)}`;
+  const contenido = `\uFEFF${filasCSVDe(reporte)}`;
 
   if (Capacitor.isNativePlatform()) {
     const { uri } = await Filesystem.writeFile({
@@ -59,6 +69,7 @@ export default function Reportes() {
   const [desde, setDesde] = useState(hoyISO());
   const [hasta, setHasta] = useState(hoyISO());
   const [reporte, setReporte] = useState(null);
+  const [cargando, setCargando] = useState(false);
   const [compacta, setCompacta] = useState(() => localStorage.getItem('densidadCompacta') === '1');
 
   function alternarDensidad() {
@@ -69,23 +80,91 @@ export default function Reportes() {
     });
   }
 
-  async function consultar(evento) {
-    evento?.preventDefault();
+  async function consultarRango(dDesde, dHasta) {
+    setCargando(true);
     try {
-      setReporte(await api.reportes(desde, hasta));
+      setReporte(await api.reportes(dDesde, dHasta));
     } catch (e) {
       mostrarError(e.message);
+    } finally {
+      setCargando(false);
     }
   }
 
-  // solo refresca si ya se pidió un reporte — evita disparar una consulta
-  // con el rango por defecto antes de que el usuario haya interactuado
-  useRefrescarAlEnfocar(() => { if (reporte) consultar(); });
+  function aplicarPreset(nombre) {
+    let nuevoDesde = hoyISO();
+    const nuevoHasta = hoyISO();
+
+    if (nombre === 'hoy') {
+      nuevoDesde = hoyISO();
+    } else if (nombre === '7d') {
+      nuevoDesde = diasAtrasISO(6);
+    } else if (nombre === '30d') {
+      nuevoDesde = diasAtrasISO(29);
+    } else if (nombre === 'mes') {
+      nuevoDesde = primerDiaMesISO();
+    }
+
+    setDesde(nuevoDesde);
+    setHasta(nuevoHasta);
+    consultarRango(nuevoDesde, nuevoHasta);
+  }
+
+  async function consultar(evento) {
+    evento?.preventDefault();
+    consultarRango(desde, hasta);
+  }
+
+  useRefrescarAlEnfocar(() => { if (reporte) consultarRango(desde, hasta); });
+
+  // Cálculos de resumen
+  const totalFiado = reporte
+    ? reporte.movimientos.filter((m) => m.tipo === 'fiado').reduce((acc, m) => acc + m.monto, 0)
+    : 0;
+  const totalAbono = reporte
+    ? reporte.movimientos.filter((m) => m.tipo === 'abono').reduce((acc, m) => acc + m.monto, 0)
+    : 0;
+  const totalCaja = reporte
+    ? reporte.caja.reduce((acc, c) => acc + c.monto, 0)
+    : 0;
+  const balanceNeto = totalAbono - totalFiado;
 
   return (
     <div className="pagina">
+      {/* Selector de Rango y Presets */}
       <section className="panel">
         <div className="panel-cuerpo">
+          <div className="presetes-fechas">
+            <button
+              type="button"
+              className={`btn-preset ${desde === hoyISO() && hasta === hoyISO() ? 'activo' : ''}`}
+              onClick={() => aplicarPreset('hoy')}
+            >
+              Hoy
+            </button>
+            <button
+              type="button"
+              className={`btn-preset ${desde === diasAtrasISO(6) && hasta === hoyISO() ? 'activo' : ''}`}
+              onClick={() => aplicarPreset('7d')}
+            >
+              Últimos 7 días
+            </button>
+            <button
+              type="button"
+              className={`btn-preset ${desde === diasAtrasISO(29) && hasta === hoyISO() ? 'activo' : ''}`}
+              onClick={() => aplicarPreset('30d')}
+            >
+              Últimos 30 días
+            </button>
+            <button
+              type="button"
+              className={`btn-preset ${desde === primerDiaMesISO() && hasta === hoyISO() ? 'activo' : ''}`}
+              onClick={() => aplicarPreset('mes')}
+            >
+              Este mes
+            </button>
+          </div>
+
           <form className="form-reportes" onSubmit={consultar}>
             <div className="campo">
               <label htmlFor="desde">Desde</label>
@@ -95,8 +174,9 @@ export default function Reportes() {
               <label htmlFor="hasta">Hasta</label>
               <input id="hasta" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} required />
             </div>
-            <button type="submit" className="btn-primario">
-              <Search size={16} strokeWidth={2} aria-hidden="true" /> Consultar
+            <button type="submit" className="btn-primario" disabled={cargando}>
+              <Search size={16} strokeWidth={2} aria-hidden="true" />
+              {cargando ? 'Consultando...' : 'Consultar'}
             </button>
           </form>
         </div>
@@ -104,9 +184,42 @@ export default function Reportes() {
 
       {reporte && (
         <>
+          {/* Tarjetas KPI de Totales del Rango */}
+          <div className="reporte-kpis-grid">
+            <div className="reporte-kpi-card">
+              <span className="reporte-kpi-etiqueta" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <ArrowUpRight size={14} color="var(--rojo)" /> Total Fiado (Nuevos)
+              </span>
+              <strong className="reporte-kpi-valor debe">{formatearPesos(totalFiado)}</strong>
+            </div>
+
+            <div className="reporte-kpi-card">
+              <span className="reporte-kpi-etiqueta" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <ArrowDownLeft size={14} color="var(--verde)" /> Total Abonos Cobrados
+              </span>
+              <strong className="reporte-kpi-valor favor">{formatearPesos(totalAbono)}</strong>
+            </div>
+
+            <div className="reporte-kpi-card">
+              <span className="reporte-kpi-etiqueta" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Wallet size={14} color="var(--acento)" /> Cierres de Caja
+              </span>
+              <strong className="reporte-kpi-valor">{formatearPesos(totalCaja)}</strong>
+            </div>
+
+            <div className="reporte-kpi-card">
+              <span className="reporte-kpi-etiqueta" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <TrendingUp size={14} /> Balance Neto Crédito
+              </span>
+              <strong className={`reporte-kpi-valor ${balanceNeto >= 0 ? 'favor' : 'debe'}`}>
+                {balanceNeto >= 0 ? `+${formatearPesos(balanceNeto)}` : formatearPesos(balanceNeto)}
+              </strong>
+            </div>
+          </div>
+
           <section className="panel">
             <div className="panel-cabecera">
-              <h3 className="panel-titulo">Tendencia del rango</h3>
+              <h3 className="panel-titulo">Tendencia del rango seleccionado</h3>
             </div>
             <div className="panel-cuerpo">
               <TrendChart datos={reporte.porDia} />
@@ -115,8 +228,8 @@ export default function Reportes() {
 
           <section className="panel">
             <div className="panel-cabecera">
-              <h3 className="panel-titulo">Movimientos</h3>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <h3 className="panel-titulo">Movimientos detallados ({reporte.movimientos.length + reporte.caja.length})</h3>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button type="button" className="btn-secundario" onClick={alternarDensidad}>
                   <Rows3 size={15} strokeWidth={2} aria-hidden="true" /> {compacta ? 'Vista normal' : 'Vista compacta'}
                 </button>

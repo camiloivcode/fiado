@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, UsersRound, UserPlus, Clock, ChevronLeft, ChevronRight, Rows3 } from 'lucide-react';
+import { Search, Plus, UsersRound, UserPlus, Clock, ChevronLeft, ChevronRight, Rows3, Phone, MessageCircle } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
@@ -19,9 +19,11 @@ export default function Clientes() {
   const { mostrarError, mostrarExito } = useToast();
   const [clientes, setClientes] = useState([]);
   const [filtro, setFiltro] = useState('');
+  const [tabActivo, setTabActivo] = useState('todos'); // 'todos' | 'deuda' | 'al-dia' | 'mora'
   const [pagina, setPagina] = useState(1);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [nombreNuevo, setNombreNuevo] = useState('');
+  const [telefonoNuevo, setTelefonoNuevo] = useState('');
   const [compacta, setCompacta] = useState(() => localStorage.getItem('densidadCompacta') === '1');
 
   function alternarDensidad() {
@@ -48,8 +50,9 @@ export default function Clientes() {
     const nombre = nombreNuevo.trim();
     if (!nombre) return;
     try {
-      await api.crearCliente(nombre);
+      await api.crearCliente(nombre, telefonoNuevo.trim());
       setNombreNuevo('');
+      setTelefonoNuevo('');
       setMostrarModal(false);
       mostrarExito('Cliente creado');
       cargar();
@@ -58,8 +61,27 @@ export default function Clientes() {
     }
   }
 
+  // Métricas y conteos de tabs
+  const conteoConDeuda = clientes.filter((c) => c.saldo > 0).length;
+  const conteoAlDia = clientes.filter((c) => c.saldo <= 0).length;
+  const conteoEnMora = clientes.filter((c) => c.saldo > 0 && (diasSinActividad(c.ultimaActividad) ?? 0) >= DIAS_ALERTA).length;
+  const totalPorCobrar = clientes.reduce((acc, c) => acc + (c.saldo > 0 ? c.saldo : 0), 0);
+
   const filtrados = clientes
-    .filter((c) => c.nombre.toLowerCase().includes(filtro.toLowerCase()))
+    .filter((c) => {
+      const coincideBusqueda =
+        c.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
+        (c.telefono && c.telefono.includes(filtro));
+      if (!coincideBusqueda) return false;
+
+      if (tabActivo === 'deuda') return c.saldo > 0;
+      if (tabActivo === 'al-dia') return c.saldo <= 0;
+      if (tabActivo === 'mora') {
+        const dias = diasSinActividad(c.ultimaActividad);
+        return c.saldo > 0 && dias !== null && dias >= DIAS_ALERTA;
+      }
+      return true;
+    })
     .sort((a, b) => b.saldo - a.saldo);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA));
@@ -71,27 +93,72 @@ export default function Clientes() {
     setPagina(1);
   }
 
+  function cambiarTab(nuevoTab) {
+    setTabActivo(nuevoTab);
+    setPagina(1);
+  }
+
   return (
     <div className="pagina">
-      <header className="pagina-cabecera" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+      <header className="pagina-cabecera" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <span style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600 }}>
+            {clientes.length} cuentas registradas • {formatearPesos(totalPorCobrar)} por cobrar
+          </span>
+        </div>
         <button className="btn-primario" onClick={() => setMostrarModal(true)}>
-          <Plus size={18} strokeWidth={2} aria-hidden="true" /> Cliente
+          <Plus size={18} strokeWidth={2} aria-hidden="true" /> Nuevo Cliente
         </button>
       </header>
+
       <div className="buscador-envoltura">
         <Search className="buscador-icono" size={18} strokeWidth={1.75} aria-hidden="true" />
         <input
           type="search"
           className="buscador"
-          placeholder="Buscar cliente..."
+          placeholder="Buscar cliente por nombre o teléfono... (⌘K)"
           value={filtro}
           onChange={(e) => buscar(e.target.value)}
         />
       </div>
 
-      {filtrados.length > 0 && (
+      <div className="filtros-tabs">
+        <button
+          type="button"
+          className={`tab-filtro ${tabActivo === 'todos' ? 'activo' : ''}`}
+          onClick={() => cambiarTab('todos')}
+        >
+          Todos <span className="badge-contador">{clientes.length}</span>
+        </button>
+        <button
+          type="button"
+          className={`tab-filtro ${tabActivo === 'deuda' ? 'activo' : ''}`}
+          onClick={() => cambiarTab('deuda')}
+        >
+          Con Deuda <span className="badge-contador">{conteoConDeuda}</span>
+        </button>
+        <button
+          type="button"
+          className={`tab-filtro ${tabActivo === 'al-dia' ? 'activo' : ''}`}
+          onClick={() => cambiarTab('al-dia')}
+        >
+          Al Día <span className="badge-contador">{conteoAlDia}</span>
+        </button>
+        <button
+          type="button"
+          className={`tab-filtro alerta ${tabActivo === 'mora' ? 'activo' : ''}`}
+          onClick={() => cambiarTab('mora')}
+        >
+          En Mora &gt;30d <span className="badge-contador">{conteoEnMora}</span>
+        </button>
+      </div>
+
+      {filtrados.length > 0 ? (
         <section className="panel">
-          <div className="panel-cabecera" style={{ justifyContent: 'flex-end' }}>
+          <div className="panel-cabecera" style={{ justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, color: 'var(--texto-suave)' }}>
+              Mostrando {filtrados.length} {filtrados.length === 1 ? 'cliente' : 'clientes'}
+            </span>
             <button type="button" className="btn-secundario" onClick={alternarDensidad}>
               <Rows3 size={15} strokeWidth={2} aria-hidden="true" /> {compacta ? 'Vista normal' : 'Vista compacta'}
             </button>
@@ -100,7 +167,11 @@ export default function Clientes() {
             <div className="tabla-reporte-wrap">
               <table className={`tabla-reporte tabla-clientes ${compacta ? 'compacta' : ''}`}>
                 <thead>
-                  <tr><th>Cliente</th><th>Estado</th><th className="col-monto">Saldo</th></tr>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Estado</th>
+                    <th className="col-monto">Saldo</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {paginados.map((c) => {
@@ -117,8 +188,17 @@ export default function Clientes() {
                       >
                         <td>
                           <div className="celda-cliente">
-                            <span className={`avatar ${claseAvatar(c.nombre)}`} aria-hidden="true">{c.nombre.slice(0, 2).toUpperCase()}</span>
-                            <span className="nombre">{c.nombre}</span>
+                            <span className={`avatar ${claseAvatar(c.nombre)}`} aria-hidden="true">
+                              {c.nombre.slice(0, 2).toUpperCase()}
+                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span className="nombre">{c.nombre}</span>
+                              {c.telefono && (
+                                <span style={{ fontSize: 12, color: 'var(--texto-suave)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  <Phone size={11} strokeWidth={1.5} /> {c.telefono}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td>
@@ -163,11 +243,10 @@ export default function Clientes() {
             </div>
           )}
         </section>
-      )}
-      {!filtrados.length && (
+      ) : (
         <div className="vacio">
           <UsersRound className="icono" size={32} strokeWidth={1.5} aria-hidden="true" />
-          Sin clientes todavía.
+          {filtro ? 'No se encontraron clientes con esa búsqueda.' : 'Sin clientes todavía en esta lista.'}
         </div>
       )}
 
@@ -178,20 +257,39 @@ export default function Clientes() {
               <span className="dialogo-icono" aria-hidden="true">
                 <UserPlus size={20} strokeWidth={2} />
               </span>
-              <h2>Nuevo cliente</h2>
+              <h2>Nuevo Cliente</h2>
             </div>
-            <input
-              type="text"
-              autoFocus
-              placeholder="Nombre"
-              value={nombreNuevo}
-              onChange={(e) => setNombreNuevo(e.target.value)}
-              required
-              style={{ textAlign: 'left', fontSize: 15 }}
-            />
-            <div className="dialogo-acciones">
+            <div className="campo">
+              <label htmlFor="nombre-nuevo-cliente" style={{ fontSize: 13, color: 'var(--texto-suave)' }}>
+                Nombre completo *
+              </label>
+              <input
+                id="nombre-nuevo-cliente"
+                type="text"
+                autoFocus
+                placeholder="Ej: Don Pedro Gómez"
+                value={nombreNuevo}
+                onChange={(e) => setNombreNuevo(e.target.value)}
+                required
+                style={{ textAlign: 'left', fontSize: 15 }}
+              />
+            </div>
+            <div className="campo">
+              <label htmlFor="telefono-nuevo-cliente" style={{ fontSize: 13, color: 'var(--texto-suave)' }}>
+                Teléfono / WhatsApp (opcional)
+              </label>
+              <input
+                id="telefono-nuevo-cliente"
+                type="tel"
+                placeholder="Ej: 312 456 7890"
+                value={telefonoNuevo}
+                onChange={(e) => setTelefonoNuevo(e.target.value)}
+                style={{ textAlign: 'left', fontSize: 15 }}
+              />
+            </div>
+            <div className="dialogo-acciones" style={{ marginTop: 8 }}>
               <button type="button" onClick={() => setMostrarModal(false)}>Cancelar</button>
-              <button type="submit">Guardar</button>
+              <button type="submit">Guardar Cliente</button>
             </div>
           </form>
         </div>
