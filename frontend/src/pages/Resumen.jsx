@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Banknote, Users, Wallet, UserX } from 'lucide-react';
+import { Banknote, Users, Wallet, UserX, BellRing } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
@@ -122,6 +122,23 @@ export default function Resumen() {
           <Sparkline datos={resumen.tendencias.cajaHoy} color="var(--verde)" />
         </div>
       </div>
+
+      {resumen.totalFiado > 0 && (
+        <div className="resumen-aviso-cobranzas">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="aviso-icono-ring"><BellRing size={16} strokeWidth={2.2} /></span>
+            <div>
+              <strong style={{ fontSize: 14, color: '#991b1b' }}>Gestión de Cobranzas Activa</strong>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--texto-suave)' }}>
+                Envía recordatorios amistosos por WhatsApp con los datos de tu Nequi en 1 solo clic.
+              </p>
+            </div>
+          </div>
+          <Link to="/cobranzas" className="btn-cobranzas-enlace">
+            Cobrar cuentas pendientes →
+          </Link>
+        </div>
+      )}
 
       <div className="resumen-grid">
         <section className="panel">

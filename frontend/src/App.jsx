@@ -8,6 +8,8 @@ import Clientes from './pages/Clientes.jsx';
 import Cliente from './pages/Cliente.jsx';
 import Caja from './pages/Caja.jsx';
 import Reportes from './pages/Reportes.jsx';
+import Cobranzas from './pages/Cobranzas.jsx';
+import Ajustes from './pages/Ajustes.jsx';
 import { api } from './api.js';
 import { leerToken, borrarToken } from './sesion.js';
 
@@ -42,8 +44,10 @@ export default function App() {
             <Route path="/" element={<Resumen />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/clientes/:id" element={<Cliente />} />
+            <Route path="/cobranzas" element={<Cobranzas />} />
             <Route path="/caja" element={<Caja />} />
             <Route path="/reportes" element={<Reportes />} />
+            <Route path="/ajustes" element={<Ajustes />} />
           </Route>
         </Routes>
       )}

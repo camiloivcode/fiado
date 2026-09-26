@@ -66,4 +66,26 @@ router.get('/yo', asincrono(async (req, res) => {
   res.json(usuario);
 }));
 
+router.get('/perfil', asincrono(async (req, res) => {
+  const encabezado = req.headers.authorization || '';
+  const token = encabezado.startsWith('Bearer ') ? encabezado.slice(7) : null;
+  const usuario = token ? await usuarioDeSesion(token) : null;
+  if (!usuario) return res.status(401).json({ error: 'Sesión expirada' });
+  const detalle = await queries.buscarUsuarioPorId.get(usuario.id);
+  res.json(detalle || usuario);
+}));
+
+router.patch('/perfil', asincrono(async (req, res) => {
+  const encabezado = req.headers.authorization || '';
+  const token = encabezado.startsWith('Bearer ') ? encabezado.slice(7) : null;
+  const usuario = token ? await usuarioDeSesion(token) : null;
+  if (!usuario) return res.status(401).json({ error: 'Sesión expirada' });
+  const actual = (await queries.buscarUsuarioPorId.get(usuario.id)) || usuario;
+  const nombre = typeof req.body.nombre === 'string' && req.body.nombre.trim() ? req.body.nombre.trim() : actual.nombre;
+  const telefono = typeof req.body.telefono === 'string' ? req.body.telefono.trim() : (actual.telefono || '');
+  const nequi = typeof req.body.nequi === 'string' ? req.body.nequi.trim() : (actual.nequi || '');
+  await queries.actualizarPerfilUsuario.run(nombre, telefono, nequi, usuario.id);
+  res.json({ id: usuario.id, email: actual.email, nombre, telefono, nequi });
+}));
+
 export default router;

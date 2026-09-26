@@ -74,6 +74,12 @@ export async function inicializarDB() {
     CREATE INDEX IF NOT EXISTS ix_movimientos_cliente ON movimientos(cliente_id);
     CREATE INDEX IF NOT EXISTS ix_movimientos_fecha ON movimientos(fecha);
     CREATE INDEX IF NOT EXISTS ix_caja_fecha ON caja(fecha);
+
+    -- Migraciones automáticas idempotentes para bases de datos existentes en Neon
+    ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS descripcion TEXT DEFAULT '';
+    ALTER TABLE clientes ADD COLUMN IF NOT EXISTS limite_credito INTEGER DEFAULT 0;
+    ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefono TEXT DEFAULT '';
+    ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nequi TEXT DEFAULT '';
   `);
 }
 
@@ -86,7 +92,14 @@ export function ahoraISO() {
 }
 
 export function mapMovimiento(row) {
-  return { id: row.id, clienteId: row.cliente_id, tipo: row.tipo, monto: row.monto, fecha: row.fecha };
+  return {
+    id: row.id,
+    clienteId: row.cliente_id,
+    tipo: row.tipo,
+    monto: row.monto,
+    descripcion: row.descripcion || '',
+    fecha: row.fecha,
+  };
 }
 
 function q(sql) {
@@ -101,14 +114,14 @@ function q(sql) {
 
 export const queries = {
   listarClientes: q('SELECT * FROM clientes ORDER BY nombre'),
-  crearCliente: q('INSERT INTO clientes (id, nombre, telefono, creado_en) VALUES ($1, $2, $3, $4)'),
-  actualizarCliente: q('UPDATE clientes SET nombre = $1, telefono = $2 WHERE id = $3'),
+  crearCliente: q('INSERT INTO clientes (id, nombre, telefono, limite_credito, creado_en) VALUES ($1, $2, $3, $4, $5)'),
+  actualizarCliente: q('UPDATE clientes SET nombre = $1, telefono = $2, limite_credito = $3 WHERE id = $4'),
   eliminarCliente: q('DELETE FROM clientes WHERE id = $1'),
   buscarCliente: q('SELECT * FROM clientes WHERE id = $1'),
 
   listarMovimientos: q('SELECT * FROM movimientos'),
   movimientosDeCliente: q('SELECT * FROM movimientos WHERE cliente_id = $1 ORDER BY fecha DESC'),
-  crearMovimiento: q('INSERT INTO movimientos (id, cliente_id, tipo, monto, fecha) VALUES ($1, $2, $3, $4, $5)'),
+  crearMovimiento: q('INSERT INTO movimientos (id, cliente_id, tipo, monto, descripcion, fecha) VALUES ($1, $2, $3, $4, $5, $6)'),
   eliminarMovimiento: q('DELETE FROM movimientos WHERE id = $1'),
   buscarMovimiento: q('SELECT * FROM movimientos WHERE id = $1'),
   movimientosEnRango: q('SELECT * FROM movimientos WHERE fecha >= $1 AND fecha <= $2 ORDER BY fecha'),
@@ -121,6 +134,8 @@ export const queries = {
   cajaEnRango: q('SELECT * FROM caja WHERE fecha >= $1 AND fecha <= $2 ORDER BY fecha'),
 
   buscarUsuarioPorEmail: q('SELECT * FROM usuarios WHERE email = $1'),
+  buscarUsuarioPorId: q('SELECT id, email, nombre, telefono, nequi, creado_en FROM usuarios WHERE id = $1'),
+  actualizarPerfilUsuario: q('UPDATE usuarios SET nombre = $1, telefono = $2, nequi = $3 WHERE id = $4'),
   crearUsuario: q('INSERT INTO usuarios (id, email, nombre, clave_hash, creado_en) VALUES ($1, $2, $3, $4, $5)'),
   contarUsuarios: q('SELECT COUNT(*)::int AS total FROM usuarios'),
 };

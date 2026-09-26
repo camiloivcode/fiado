@@ -31,18 +31,24 @@ export const api = {
   login: (email, clave) => solicitar('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, clave }) }),
   logout: () => solicitar('/api/auth/logout', { method: 'POST' }),
   yo: () => solicitar('/api/auth/yo'),
+  perfil: () => solicitar('/api/auth/perfil'),
+  actualizarPerfil: (datos) => solicitar('/api/auth/perfil', { method: 'PATCH', body: JSON.stringify(datos) }),
   listarClientes: () => solicitar('/api/clientes'),
-  crearCliente: (nombre, telefono = '') =>
-    solicitar('/api/clientes', { method: 'POST', body: JSON.stringify({ nombre, telefono }) }),
-  editarCliente: (id, nombre, telefono) =>
+  crearCliente: (nombre, telefono = '', limiteCredito = 0) =>
+    solicitar('/api/clientes', { method: 'POST', body: JSON.stringify({ nombre, telefono, limiteCredito }) }),
+  editarCliente: (id, nombre, telefono, limiteCredito) =>
     solicitar(`/api/clientes/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ nombre, ...(telefono !== undefined ? { telefono } : {}) }),
+      body: JSON.stringify({
+        nombre,
+        ...(telefono !== undefined ? { telefono } : {}),
+        ...(limiteCredito !== undefined ? { limiteCredito } : {}),
+      }),
     }),
   eliminarCliente: (id) => solicitar(`/api/clientes/${id}`, { method: 'DELETE' }),
   movimientosDeCliente: (id) => solicitar(`/api/clientes/${id}/movimientos`),
-  crearMovimiento: (clienteId, tipo, monto) =>
-    solicitar('/api/movimientos', { method: 'POST', body: JSON.stringify({ clienteId, tipo, monto }) }),
+  crearMovimiento: (clienteId, tipo, monto, descripcion = '') =>
+    solicitar('/api/movimientos', { method: 'POST', body: JSON.stringify({ clienteId, tipo, monto, descripcion }) }),
   eliminarMovimiento: (id) => solicitar(`/api/movimientos/${id}`, { method: 'DELETE' }),
   listarCaja: () => solicitar('/api/caja'),
   cerrarCaja: (monto, nota) => solicitar('/api/caja', { method: 'POST', body: JSON.stringify({ monto, nota }) }),

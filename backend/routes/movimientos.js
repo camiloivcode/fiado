@@ -19,8 +19,9 @@ router.post('/', asincrono(async (req, res) => {
     return res.status(400).json({ error: 'Ingresa un monto válido, mayor a cero' });
   }
   const montoNum = parsearMonto(monto);
-  const mov = { id: generarId(), clienteId, tipo, monto: montoNum, fecha: ahoraISO() };
-  await queries.crearMovimiento.run(mov.id, mov.clienteId, mov.tipo, mov.monto, mov.fecha);
+  const descripcion = typeof req.body.descripcion === 'string' ? req.body.descripcion.trim().slice(0, 300) : '';
+  const mov = { id: generarId(), clienteId, tipo, monto: montoNum, descripcion, fecha: ahoraISO() };
+  await queries.crearMovimiento.run(mov.id, mov.clienteId, mov.tipo, mov.monto, mov.descripcion, mov.fecha);
   res.status(201).json(mov);
 }));
 

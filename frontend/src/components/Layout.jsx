@@ -1,15 +1,19 @@
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { LayoutDashboard, Users, Wallet, FileBarChart, Menu, LogOut, Plus, Calendar, Store } from 'lucide-react';
+import { LayoutDashboard, Users, Wallet, FileBarChart, BellRing, Settings, Menu, LogOut, Plus, Calendar, Store, Receipt } from 'lucide-react';
 import { api } from '../api.js';
 import { borrarToken } from '../sesion.js';
 import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
+import ModalFiarRapido from './ModalFiarRapido.jsx';
+import ComprobanteModal from './ComprobanteModal.jsx';
 
 const ENLACES = [
   { to: '/', etiqueta: 'Resumen', Icono: LayoutDashboard },
   { to: '/clientes', etiqueta: 'Clientes', Icono: Users },
+  { to: '/cobranzas', etiqueta: 'Cobranzas', Icono: BellRing },
   { to: '/caja', etiqueta: 'Caja', Icono: Wallet },
   { to: '/reportes', etiqueta: 'Reportes', Icono: FileBarChart },
+  { to: '/ajustes', etiqueta: 'Ajustes', Icono: Settings },
 ];
 
 const FECHA_HOY = new Date().toLocaleDateString('es-CO', {
@@ -20,7 +24,7 @@ function activoPara(pathname, to) {
   return to === '/' ? pathname === '/' : pathname.startsWith(to);
 }
 
-function Navegacion({ variante, colapsado }) {
+function Navegacion({ variante, colapsado, onFiarClick }) {
   const location = useLocation();
   const itemRefs = useRef({});
   const [rect, setRect] = useState(null);
@@ -54,7 +58,7 @@ function Navegacion({ variante, colapsado }) {
           title={etiqueta}
           aria-label={etiqueta}
         >
-          <Icono className="icono nav-icono" size={20} strokeWidth={1.75} aria-hidden="true" />
+          <Icono className="icono nav-icono" size={19} strokeWidth={1.8} aria-hidden="true" />
           <span className="nav-etiqueta">{etiqueta}</span>
         </NavLink>
       ))}
@@ -68,6 +72,8 @@ export default function Layout() {
   const [colapsado, setColapsado] = useState(() => localStorage.getItem('sidebarColapsado') === '1');
   const [conectado, setConectado] = useState(true);
   const [usuario, setUsuario] = useState(null);
+  const [modalFiarAbierto, setModalFiarAbierto] = useState(false);
+  const [comprobanteActivo, setComprobanteActivo] = useState(null); // { movimiento, cliente }
 
   function alternarSidebar() {
     setColapsado((actual) => {
@@ -103,6 +109,10 @@ export default function Layout() {
     location.reload();
   }
 
+  function alGuardarFiado(movimiento, cliente) {
+    setComprobanteActivo({ movimiento, cliente });
+  }
+
   return (
     <div className="app-shell">
       <header className="barra-superior">
@@ -128,10 +138,15 @@ export default function Layout() {
         )}
 
         <span className="barra-superior-derecha">
-          <Link to="/clientes" className="btn-fiar-rapido" title="Registrar nuevo fiado">
+          <button
+            type="button"
+            className="btn-fiar-rapido"
+            onClick={() => setModalFiarAbierto(true)}
+            title="Registrar fiado rápido"
+          >
             <Plus size={15} strokeWidth={2.5} />
             <span style={{ display: 'inline' }}>Fiar</span>
-          </Link>
+          </button>
           <span
             className={`indicador-conexion ${conectado ? '' : 'desconectado'}`}
             title={conectado ? 'Conectado al servidor' : 'Sin conexión con el servidor'}
@@ -173,6 +188,35 @@ export default function Layout() {
         </main>
         <Navegacion variante="bottom" />
       </div>
+
+      {/* Botón flotante para celular (FAB) */}
+      <button
+        type="button"
+        className="fab-fiar-movil"
+        onClick={() => setModalFiarAbierto(true)}
+        aria-label="Registrar fiado rápido"
+      >
+        <Plus size={22} strokeWidth={2.5} />
+        <span>Fiar</span>
+      </button>
+
+      {/* Modal global de fiado rápido */}
+      {modalFiarAbierto && (
+        <ModalFiarRapido
+          onClose={() => setModalFiarAbierto(false)}
+          onGuardado={alGuardarFiado}
+        />
+      )}
+
+      {/* Modal de Comprobante / Tique */}
+      {comprobanteActivo && (
+        <ComprobanteModal
+          movimiento={comprobanteActivo.movimiento}
+          cliente={comprobanteActivo.cliente}
+          tienda={usuario}
+          onClose={() => setComprobanteActivo(null)}
+        />
+      )}
     </div>
   );
 }

@@ -24,6 +24,7 @@ export default function Clientes() {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [nombreNuevo, setNombreNuevo] = useState('');
   const [telefonoNuevo, setTelefonoNuevo] = useState('');
+  const [limiteNuevo, setLimiteNuevo] = useState('');
   const [compacta, setCompacta] = useState(() => localStorage.getItem('densidadCompacta') === '1');
 
   function alternarDensidad() {
@@ -50,9 +51,10 @@ export default function Clientes() {
     const nombre = nombreNuevo.trim();
     if (!nombre) return;
     try {
-      await api.crearCliente(nombre, telefonoNuevo.trim());
+      await api.crearCliente(nombre, telefonoNuevo.trim(), Number(limiteNuevo) || 0);
       setNombreNuevo('');
       setTelefonoNuevo('');
+      setLimiteNuevo('');
       setMostrarModal(false);
       mostrarExito('Cliente creado');
       cargar();
@@ -193,11 +195,18 @@ export default function Clientes() {
                             </span>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                               <span className="nombre">{c.nombre}</span>
-                              {c.telefono && (
-                                <span style={{ fontSize: 12, color: 'var(--texto-suave)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                  <Phone size={11} strokeWidth={1.5} /> {c.telefono}
-                                </span>
-                              )}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                {c.telefono && (
+                                  <span style={{ fontSize: 12, color: 'var(--texto-suave)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    <Phone size={11} strokeWidth={1.5} /> {c.telefono}
+                                  </span>
+                                )}
+                                {c.limiteCredito > 0 && (
+                                  <span className="cupo-badge-mini" title={`Cupo máximo: ${formatearPesos(c.limiteCredito)}`}>
+                                    Cupo: {formatearPesos(c.limiteCredito)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -286,6 +295,20 @@ export default function Clientes() {
                 onChange={(e) => setTelefonoNuevo(e.target.value)}
                 style={{ textAlign: 'left', fontSize: 15 }}
               />
+            </div>
+            <div className="campo">
+              <label htmlFor="limite-nuevo-cliente" style={{ fontSize: 13, color: 'var(--texto-suave)' }}>
+                Cupo máximo de crédito ($ COP, opcional)
+              </label>
+              <input
+                id="limite-nuevo-cliente"
+                type="number"
+                placeholder="Ej: 100000 (0 para sin límite)"
+                value={limiteNuevo}
+                onChange={(e) => setLimiteNuevo(e.target.value)}
+                style={{ textAlign: 'left', fontSize: 15 }}
+              />
+              <span className="campo-ayuda">Puedes dejarlo vacío o definir un cupo para alertarte si lo excede.</span>
             </div>
             <div className="dialogo-acciones" style={{ marginTop: 8 }}>
               <button type="button" onClick={() => setMostrarModal(false)}>Cancelar</button>

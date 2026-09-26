@@ -725,4 +725,949 @@ a { color: inherit; }
   .tienda-pill { display: none !important; }
 }
 
+/* ==========================================================================
+   DISEÑO ARTESANAL & FINTECH / POS PARA FIADO (CRAFTED BY DESIGNER)
+   ========================================================================== */
+
+/* ---------- Botón Flotante para Celular (FAB) ---------- */
+.fab-fiar-movil {
+  position: fixed;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  right: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 22px;
+  font-size: 15px;
+  font-weight: 800;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.4), 0 2px 6px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  z-index: 25;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease, background 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.fab-fiar-movil:hover {
+  background: #b91c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(220, 38, 38, 0.45);
+}
+.fab-fiar-movil:active {
+  transform: scale(0.93);
+}
+@media (min-width: 1024px) {
+  .fab-fiar-movil { display: none !important; }
+}
+
+/* ---------- Barra de Navegación Inferior (Mobile Glassmorphism) ---------- */
+.nav-bottom {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(226, 232, 240, 0.85);
+  display: flex;
+  justify-content: space-around;
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  z-index: 20;
+}
+.nav-bottom .nav-item {
+  flex: 1;
+  padding: 6px 2px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.nav-bottom .nav-item .nav-icono {
+  margin-bottom: 2px;
+}
+
+/* ---------- Barra de Cupo de Crédito (Credit Meter) ---------- */
+.cliente-cupo-card {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--sombra);
+}
+.sin-cupo-aviso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--acento);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+.barra-cupo-envoltura {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.barra-cupo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+.barra-cupo-etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: var(--texto);
+}
+.barra-cupo-disponible {
+  font-weight: 700;
+  color: var(--verde);
+}
+.barra-cupo-envoltura.peligro .barra-cupo-disponible {
+  color: var(--rojo);
+}
+.barra-cupo-track {
+  height: 7px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+.barra-cupo-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease;
+}
+.barra-cupo-fill.normal {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+.barra-cupo-fill.advertencia {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+.barra-cupo-fill.peligro {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.cupo-badge-mini {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Timeline Editorial de Transacciones ---------- */
+.timeline-transacciones {
+  position: relative;
+  padding: 16px 18px 24px;
+}
+.timeline-transacciones::before {
+  content: '';
+  position: absolute;
+  left: 31px;
+  top: 24px;
+  bottom: 24px;
+  width: 2px;
+  background: #e2e8f0;
+  z-index: 0;
+}
+.timeline-item {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  margin-bottom: 18px;
+  z-index: 1;
+}
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+.timeline-nodo {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--superficie);
+  border: 2px solid var(--borde);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-top: 4px;
+}
+.timeline-nodo.fiado {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+.timeline-nodo.abono {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #059669;
+}
+.timeline-contenido {
+  flex: 1;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-control);
+  padding: 12px 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.timeline-contenido:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+}
+.timeline-linea-superior {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.timeline-titulo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.timeline-badge-tipo {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.timeline-badge-tipo.fiado {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.timeline-badge-tipo.abono {
+  background: #d1fae5;
+  color: #047857;
+}
+.timeline-hora {
+  font-size: 12px;
+  color: var(--texto-suave);
+  font-weight: 500;
+}
+.timeline-monto {
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.timeline-monto.fiado { color: #dc2626; }
+.timeline-monto.abono { color: #059669; }
+
+.timeline-descripcion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 13px;
+  color: #334155;
+  margin-top: 8px;
+  font-weight: 500;
+}
+.icono-bolsa {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.timeline-acciones {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #f1f5f9;
+}
+.btn-timeline-recibo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-timeline-recibo:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.btn-timeline-recibo:active {
+  transform: scale(0.95);
+}
+.btn-timeline-borrar {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.btn-timeline-borrar:hover {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+/* ---------- Chips de Productos Sugeridos (Fiados) ---------- */
+.chips-productos-sugeridos {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.chip-prod-tag {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+.chip-prod-tag:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+.chip-prod-tag:active {
+  transform: scale(0.92);
+  background: var(--acento-suave);
+  border-color: var(--acento);
+  color: var(--acento);
+}
+
+/* ---------- Modal de Fiado Rápido (POS Style) ---------- */
+.modal-fiar-rapido {
+  width: 100%;
+  max-width: 480px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+  animation: subirDialogo 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-fiar-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--borde);
+}
+.modal-icono-fiar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #fee2e2;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-titulo {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+  color: var(--texto);
+}
+.modal-sub {
+  font-size: 12px;
+  color: var(--texto-suave);
+}
+.btn-cerrar-modal {
+  background: transparent;
+  border: none;
+  color: var(--texto-suave);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-cerrar-modal:hover {
+  background: var(--fondo);
+  color: var(--texto);
+}
+
+.fiar-seccion-cliente {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.lista-seleccion-clientes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.item-seleccion-cliente {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.item-seleccion-cliente:hover {
+  border-color: var(--acento);
+  background: var(--acento-suave);
+}
+.nombre-cliente-fiar {
+  font-size: 13px;
+  color: var(--texto);
+  display: block;
+}
+.sub-cliente-fiar {
+  font-size: 11px;
+  color: var(--texto-suave);
+}
+.saldo-cliente-fiar {
+  font-size: 12px;
+  font-weight: 700;
+  color: #dc2626;
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+.cliente-fiar-seleccionado {
+  margin-bottom: 12px;
+}
+.info-cliente-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.btn-cambiar-cliente {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--acento);
+  cursor: pointer;
+}
+.btn-cambiar-cliente:hover {
+  background: var(--acento-suave);
+}
+
+.chips-monto-fiar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-top: 6px;
+}
+.chip-monto-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: all 0.12s ease;
+}
+.chip-monto-btn:hover {
+  border-color: #dc2626;
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.alerta-cupo-aviso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #b45309;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.modal-fiar-acciones {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borde);
+}
+.btn-confirmar-fiar {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 800;
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3);
+}
+.btn-confirmar-fiar:hover {
+  background: #b91c1c !important;
+}
+
+/* ---------- Tique Térmico Digital (ComprobanteModal) ---------- */
+.comprobante-dialogo {
+  width: 100%;
+  max-width: 380px;
+  position: relative;
+  animation: subirDialogo 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.tique-contenedor {
+  background: #ffffff;
+  border-radius: 12px 12px 0 0;
+  padding: 24px 22px 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  position: relative;
+  color: #1e293b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+.tique-cabecera {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.tique-icono-marca {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.tique-tienda {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.02em;
+  font-family: var(--fuente-display);
+}
+.tique-tipo-badge {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+.tique-tipo-badge.fiado {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.tique-tipo-badge.abono {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.tique-divisor-punteado {
+  border-bottom: 2px dashed #cbd5e1;
+  margin: 16px 0;
+}
+
+.tique-filas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+}
+.tique-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tique-clave {
+  color: #64748b;
+  font-weight: 500;
+}
+.tique-valor {
+  font-weight: 700;
+  color: #0f172a;
+  text-align: right;
+}
+.tique-seccion-detalle {
+  background: #fffbeb;
+  border: 1px dashed #fde68a;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 4px 0;
+}
+.tique-texto-descripcion {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #92400e;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.tique-total-fila {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed #cbd5e1;
+}
+.tique-monto-grande {
+  font-size: 20px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.tique-monto-grande.fiado { color: #dc2626; }
+.tique-monto-grande.abono { color: #059669; }
+
+.tique-saldo-fila {
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-top: 4px;
+}
+.tique-saldo-valor {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+.tique-pie-nequi {
+  text-align: center;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed #cbd5e1;
+}
+.tique-pie-nequi strong {
+  color: #0f172a;
+}
+
+/* Borde Zig-Zag inferior del tique */
+.tique-borde-zigzag {
+  position: absolute;
+  bottom: -12px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: radial-gradient(circle, transparent, transparent 50%, #ffffff 50%, #ffffff 100%);
+  background-size: 16px 16px;
+}
+
+.comprobante-acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+}
+.btn-whatsapp-comprobante {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #25d366;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+.btn-whatsapp-comprobante:hover {
+  background: #20ba59;
+}
+.btn-whatsapp-comprobante:active {
+  transform: scale(0.96);
+}
+
+/* ---------- Sección de Cobranzas ---------- */
+.cobranzas-kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.cobranzas-kpi-card {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow: var(--sombra);
+}
+.cobranzas-kpi-card.alerta {
+  border-color: #fca5a5;
+  background: linear-gradient(180deg, #fff 0%, #fff5f5 100%);
+}
+.cobranzas-kpi-icono {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #fee2e2;
+  color: #dc2626;
+}
+.cobranzas-kpi-etiqueta {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto-suave);
+  display: block;
+  margin-bottom: 2px;
+}
+.cobranzas-kpi-valor {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--texto);
+  font-variant-numeric: tabular-nums;
+  display: block;
+}
+.cobranzas-kpi-card.alerta .cobranzas-kpi-valor {
+  color: #dc2626;
+}
+.cobranzas-kpi-sub {
+  font-size: 11px;
+  color: var(--texto-suave);
+}
+
+.lista-cobranzas {
+  display: flex;
+  flex-direction: column;
+}
+.tarjeta-cobranza-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--borde);
+  gap: 14px;
+  transition: background 0.12s ease;
+}
+.tarjeta-cobranza-item:last-child {
+  border-bottom: none;
+}
+.tarjeta-cobranza-item:hover {
+  background: var(--superficie-hover);
+}
+.cobranza-cliente-col {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1.5;
+  min-width: 0;
+}
+.cobranza-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cobranza-nombre {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--texto);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cobranza-nombre:hover {
+  color: var(--acento);
+}
+.icono-chevron {
+  color: #94a3b8;
+}
+.cobranza-telefono {
+  font-size: 12px;
+  color: var(--texto-suave);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cobranza-sin-telefono {
+  font-size: 11px;
+  color: #94a3b8;
+  font-style: italic;
+}
+.badge-dias-mora {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-top: 2px;
+  width: fit-content;
+}
+.badge-dias-mora.mora-grave {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.cobranza-saldo-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex: 1;
+}
+.cobranza-saldo-etiqueta {
+  font-size: 11px;
+  color: var(--texto-suave);
+}
+.cobranza-saldo-monto {
+  font-size: 17px;
+  font-weight: 800;
+  color: #dc2626;
+  font-variant-numeric: tabular-nums;
+}
+
+.cobranza-accion-col {
+  flex-shrink: 0;
+}
+.btn-whatsapp-cobro {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #25d366;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+.btn-whatsapp-cobro:hover {
+  background: #20ba59;
+}
+.btn-whatsapp-cobro:active {
+  transform: scale(0.94);
+}
+
+/* Banner de cobro en Resumen */
+.resumen-aviso-cobranzas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: var(--radio);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.aviso-icono-ring {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.btn-cobranzas-enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #dc2626;
+  color: #fff;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.btn-cobranzas-enlace:hover {
+  background: #b91c1c;
+}
+
+@media (max-width: 640px) {
+  .tarjeta-cobranza-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .cobranza-saldo-col {
+    align-items: flex-start;
+  }
+  .cobranza-accion-col .btn-whatsapp-cobro {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Trash2, UserRoundX, Pencil, Phone, MessageCircle, Share2 } from 'lucide-react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Trash2, UserRoundX, Pencil, Phone, MessageCircle, Share2, Receipt, ShieldCheck, ShoppingBag, Clock } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
@@ -8,28 +8,50 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import MontoInput from '../components/MontoInput.jsx';
 import Sparkline from '../components/Sparkline.jsx';
 import Dinero from '../components/Dinero.jsx';
+import BarraCupo from '../components/BarraCupo.jsx';
+import ComprobanteModal from '../components/ComprobanteModal.jsx';
 import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
+
+const PRODUCTOS_SUGERIDOS = [
+  '2 Leches',
+  'Pan',
+  'Huevos',
+  'Arroz',
+  'Aceite',
+  'Gaseosa',
+  'Café',
+  'Azúcar',
+];
 
 export default function Cliente() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { mostrarError, mostrarExito } = useToast();
   const [cliente, setCliente] = useState(null);
+  const [perfilTienda, setPerfilTienda] = useState(null);
   const [movimientos, setMovimientos] = useState([]);
   const [dialogo, setDialogo] = useState(null); // 'fiado' | 'abono' | 'editar'
   const [monto, setMonto] = useState('');
+  const [descripcion, setDescripcion] = useState('');
   const [nombreEditado, setNombreEditado] = useState('');
   const [telefonoEditado, setTelefonoEditado] = useState('');
+  const [limiteEditado, setLimiteEditado] = useState('');
   const [movABorrar, setMovABorrar] = useState(null);
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
+  const [comprobanteParaMostrar, setComprobanteParaMostrar] = useState(null);
 
   async function cargar() {
     try {
-      const clientes = await api.listarClientes();
+      const [clientes, movs, tienda] = await Promise.all([
+        api.listarClientes(),
+        api.movimientosDeCliente(id),
+        api.perfil().catch(() => null),
+      ]);
       const encontrado = clientes.find((c) => c.id === id);
       if (!encontrado) return navigate('/clientes');
       setCliente(encontrado);
-      setMovimientos(await api.movimientosDeCliente(id));
+      setMovimientos(movs);
+      setPerfilTienda(tienda);
     } catch (e) {
       mostrarError(e.message);
     }
@@ -38,13 +60,32 @@ export default function Cliente() {
   useEffect(() => { cargar(); }, [id]);
   useRefrescarAlEnfocar(cargar);
 
+  function agregarProducto(prod) {
+    setDescripcion((prev) => {
+      const limpia = prev.trim();
+      if (!limpia) return prod;
+      if (limpia.toLowerCase().includes(prod.toLowerCase())) return limpia;
+      return `${limpia}, ${prod}`;
+    });
+  }
+
   async function guardarMovimiento(evento) {
     evento.preventDefault();
+    const montoNum = Number(monto);
+    if (!montoNum || montoNum <= 0) return mostrarError('Ingresa un monto válido');
+
     try {
-      await api.crearMovimiento(id, dialogo, Number(monto));
+      const mov = await api.crearMovimiento(id, dialogo, montoNum, descripcion.trim());
+      const nuevoSaldo = (cliente.saldo || 0) + (dialogo === 'fiado' ? montoNum : -montoNum);
+      const clienteActualizado = { ...cliente, saldo: nuevoSaldo };
+
       setMonto('');
+      setDescripcion('');
       setDialogo(null);
       mostrarExito(dialogo === 'fiado' ? 'Fiado registrado' : 'Abono registrado');
+
+      // Mostrar comprobante digital con 1-tap WhatsApp
+      setComprobanteParaMostrar({ movimiento: mov, cliente: clienteActualizado });
       cargar();
     } catch (e) {
       mostrarError(e.message);
@@ -56,7 +97,7 @@ export default function Cliente() {
     const nombre = nombreEditado.trim();
     if (!nombre) return;
     try {
-      await api.editarCliente(id, nombre, telefonoEditado.trim());
+      await api.editarCliente(id, nombre, telefonoEditado.trim(), Number(limiteEditado) || 0);
       setDialogo(null);
       mostrarExito('Cliente actualizado');
       cargar();
@@ -169,6 +210,7 @@ export default function Cliente() {
               onClick={() => {
                 setNombreEditado(cliente.nombre);
                 setTelefonoEditado(cliente.telefono || '');
+                setLimiteEditado(String(cliente.limiteCredito || ''));
                 setDialogo('editar');
               }}
               aria-label="Editar cliente"
@@ -191,6 +233,7 @@ export default function Cliente() {
         </div>
       </div>
 
+      {/* Saldo y Barra de Cupo */}
       <div className={`saldo-grande ${saldo > 0 ? 'debe' : saldo < 0 ? 'favor' : ''}`}>
         <Dinero valor={Math.abs(saldo)} />
         <small>{saldo < 0 ? 'a favor' : saldo === 0 ? 'cuenta al día' : 'saldo pendiente por pagar'}</small>
@@ -201,15 +244,57 @@ export default function Cliente() {
         />
       </div>
 
+      {/* Control de Cupo de Crédito */}
+      <div className="cliente-cupo-card">
+        {cliente.limiteCredito > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <BarraCupo saldo={saldo} limiteCredito={cliente.limiteCredito} />
+            <button
+              type="button"
+              className="btn-link"
+              style={{ alignSelf: 'flex-start', fontSize: 12 }}
+              onClick={() => {
+                setNombreEditado(cliente.nombre);
+                setTelefonoEditado(cliente.telefono || '');
+                setLimiteEditado(String(cliente.limiteCredito || ''));
+                setDialogo('editar');
+              }}
+            >
+              Ajustar límite de cupo
+            </button>
+          </div>
+        ) : (
+          <div className="sin-cupo-aviso">
+            <span style={{ fontSize: 13, color: 'var(--texto-suave)' }}>
+              Sin cupo fijado (crédito ilimitado)
+            </span>
+            <button
+              type="button"
+              className="btn-link"
+              style={{ fontSize: 12 }}
+              onClick={() => {
+                setNombreEditado(cliente.nombre);
+                setTelefonoEditado(cliente.telefono || '');
+                setLimiteEditado('');
+                setDialogo('editar');
+              }}
+            >
+              + Fijar cupo máximo
+            </button>
+          </div>
+        )}
+      </div>
+
       <div className="acciones">
-        <button className="btn-fiar" onClick={() => setDialogo('fiado')}>
-          <ArrowUpRight size={18} strokeWidth={2} aria-hidden="true" /> + Fiar Producto
+        <button className="btn-fiar" onClick={() => { setMonto(''); setDescripcion(''); setDialogo('fiado'); }}>
+          <ArrowUpRight size={18} strokeWidth={2.5} aria-hidden="true" /> + Fiar Producto
         </button>
-        <button className="btn-abonar" onClick={() => setDialogo('abono')}>
-          <ArrowDownLeft size={18} strokeWidth={2} aria-hidden="true" /> + Abonar Dinero
+        <button className="btn-abonar" onClick={() => { setMonto(''); setDialogo('abono'); }}>
+          <ArrowDownLeft size={18} strokeWidth={2.5} aria-hidden="true" /> + Abonar Dinero
         </button>
       </div>
 
+      {/* Timeline de Transacciones */}
       <section className="panel">
         <div className="panel-cabecera">
           <div>
@@ -220,31 +305,82 @@ export default function Cliente() {
           </div>
         </div>
         <div className="panel-cuerpo sin-relleno">
-          <ul className="historial" style={{ padding: '0 18px' }}>
-            {movimientos.map((m) => (
-              <li key={m.id} className="fila-mov">
-                <span className={`tipo ${m.tipo}`}>
-                  {m.tipo === 'fiado' ? <ArrowUpRight size={13} strokeWidth={2.5} aria-hidden="true" /> : <ArrowDownLeft size={13} strokeWidth={2.5} aria-hidden="true" />}
-                  {m.tipo === 'fiado' ? 'Fiado' : 'Abono'}
-                </span>
-                <span className="monto" style={{ color: m.tipo === 'fiado' ? 'var(--rojo)' : 'var(--verde)' }}>
-                  {m.tipo === 'fiado' ? '+' : '-'}{formatearPesos(m.monto)}
-                </span>
-                <span className="fecha">
-                  {new Date(m.fecha).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                </span>
-                <button className="btn-borrar" onClick={() => setMovABorrar(m.id)} aria-label="Eliminar movimiento" title="Eliminar registro">
-                  <Trash2 size={16} strokeWidth={1.75} />
-                </button>
-              </li>
-            ))}
+          <div className="timeline-transacciones">
+            {movimientos.map((m) => {
+              const esFiado = m.tipo === 'fiado';
+              const fechaObj = new Date(m.fecha);
+              const hora = fechaObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+              const fechaCorta = fechaObj.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+
+              return (
+                <div key={m.id} className="timeline-item">
+                  <div className={`timeline-nodo ${esFiado ? 'fiado' : 'abono'}`}>
+                    {esFiado ? (
+                      <ArrowUpRight size={15} strokeWidth={2.5} />
+                    ) : (
+                      <ArrowDownLeft size={15} strokeWidth={2.5} />
+                    )}
+                  </div>
+
+                  <div className="timeline-contenido">
+                    <div className="timeline-linea-superior">
+                      <div className="timeline-titulo-wrap">
+                        <span className={`timeline-badge-tipo ${esFiado ? 'fiado' : 'abono'}`}>
+                          {esFiado ? 'Fiado' : 'Abono'}
+                        </span>
+                        <span className="timeline-hora">
+                          <Clock size={11} strokeWidth={2} style={{ verticalAlign: -1 }} /> {fechaCorta}, {hora}
+                        </span>
+                      </div>
+
+                      <strong className={`timeline-monto ${esFiado ? 'fiado' : 'abono'}`}>
+                        {esFiado ? '+' : '-'}{formatearPesos(m.monto)}
+                      </strong>
+                    </div>
+
+                    {/* Detalle de productos llevados */}
+                    {m.descripcion && (
+                      <div className="timeline-descripcion">
+                        <ShoppingBag size={12} strokeWidth={2} className="icono-bolsa" />
+                        <span>{m.descripcion}</span>
+                      </div>
+                    )}
+
+                    {/* Acciones de la transacción */}
+                    <div className="timeline-acciones">
+                      <button
+                        type="button"
+                        className="btn-timeline-recibo"
+                        onClick={() => setComprobanteParaMostrar({ movimiento: m, cliente })}
+                        title="Ver o compartir comprobante de este movimiento"
+                      >
+                        <Receipt size={13} strokeWidth={2} />
+                        <span>Recibo / WhatsApp</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-timeline-borrar"
+                        onClick={() => setMovABorrar(m.id)}
+                        aria-label="Eliminar registro"
+                        title="Eliminar este registro"
+                      >
+                        <Trash2 size={13} strokeWidth={1.75} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
             {!movimientos.length && (
-              <li className="vacio">
-                <UserRoundX className="icono" size={28} strokeWidth={1.5} aria-hidden="true" />
-                Sin movimientos todavía. Usa "+ Fiar" o "+ Abonar" arriba.
-              </li>
+              <div className="vacio" style={{ padding: '36px 16px' }}>
+                <UserRoundX className="icono" size={32} strokeWidth={1.5} aria-hidden="true" />
+                <p style={{ marginTop: 8, fontWeight: 500 }}>
+                  Sin movimientos todavía. Usa "+ Fiar" o "+ Abonar" arriba para comenzar.
+                </p>
+              </div>
             )}
-          </ul>
+          </div>
         </div>
       </section>
 
@@ -252,6 +388,7 @@ export default function Cliente() {
         <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" /> Eliminar cliente
       </button>
 
+      {/* Diálogo Editar Cliente */}
       {dialogo === 'editar' && (
         <div className="overlay" onClick={(e) => e.target === e.currentTarget && setDialogo(null)}>
           <form className="dialogo" onSubmit={guardarEdicion}>
@@ -285,6 +422,18 @@ export default function Cliente() {
                 style={{ textAlign: 'left', fontSize: 15 }}
               />
             </div>
+            <div className="campo">
+              <label htmlFor="limite-editado" style={{ fontSize: 13, color: 'var(--texto-suave)' }}>Cupo máximo de crédito ($ COP)</label>
+              <input
+                id="limite-editado"
+                type="number"
+                placeholder="Ej: 100000 (0 para sin límite)"
+                value={limiteEditado}
+                onChange={(e) => setLimiteEditado(e.target.value)}
+                style={{ textAlign: 'left', fontSize: 15 }}
+              />
+              <span className="campo-ayuda">El sistema te avisará si el cliente supera este límite.</span>
+            </div>
             <div className="dialogo-acciones">
               <button type="button" onClick={() => setDialogo(null)}>Cancelar</button>
               <button type="submit">Guardar cambios</button>
@@ -293,6 +442,7 @@ export default function Cliente() {
         </div>
       )}
 
+      {/* Diálogo Fiar o Abonar */}
       {(dialogo === 'fiado' || dialogo === 'abono') && (
         <div className="overlay" onClick={(e) => e.target === e.currentTarget && setDialogo(null)}>
           <form className="dialogo" onSubmit={guardarMovimiento}>
@@ -333,7 +483,47 @@ export default function Cliente() {
               )}
             </div>
 
-            <div className="dialogo-acciones">
+            {/* Si es FIADO: Detalle opcional de productos llevados */}
+            {dialogo === 'fiado' && (
+              <div className="campo" style={{ marginTop: 8 }}>
+                <label className="campo-label" htmlFor="descripcion-fiado" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <ShoppingBag size={13} strokeWidth={2} /> ¿Qué lleva? (opcional)
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--texto-suave)' }}>Toca los artículos abajo</span>
+                </label>
+                <input
+                  id="descripcion-fiado"
+                  type="text"
+                  placeholder="Ej: 2 leches, huevos, pan..."
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  style={{ textAlign: 'left', fontSize: 14 }}
+                />
+                <div className="chips-productos-sugeridos" style={{ marginTop: 6 }}>
+                  {PRODUCTOS_SUGERIDOS.map((p) => (
+                    <button
+                      type="button"
+                      key={p}
+                      className="chip-prod-tag"
+                      onClick={() => agregarProducto(p)}
+                    >
+                      + {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Alerta de exceso de cupo */}
+            {dialogo === 'fiado' && cliente.limiteCredito > 0 && (Number(monto) + saldo) > cliente.limiteCredito && (
+              <div className="alerta-cupo-aviso" style={{ marginTop: 10 }}>
+                <ShieldCheck size={14} />
+                <span>Superará el cupo fijado de {formatearPesos(cliente.limiteCredito)}.</span>
+              </div>
+            )}
+
+            <div className="dialogo-acciones" style={{ marginTop: 16 }}>
               <button type="button" onClick={() => setDialogo(null)}>Cancelar</button>
               <button type="submit">
                 {dialogo === 'fiado' ? 'Guardar Fiado' : 'Guardar Abono'}
@@ -341,6 +531,16 @@ export default function Cliente() {
             </div>
           </form>
         </div>
+      )}
+
+      {/* Comprobante Digital Modal */}
+      {comprobanteParaMostrar && (
+        <ComprobanteModal
+          movimiento={comprobanteParaMostrar.movimiento}
+          cliente={comprobanteParaMostrar.cliente}
+          tienda={perfilTienda}
+          onClose={() => setComprobanteParaMostrar(null)}
+        />
       )}
 
       {movABorrar && (
