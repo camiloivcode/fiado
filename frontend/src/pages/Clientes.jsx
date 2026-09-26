@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, UsersRound, UserPlus, Clock, ChevronLeft, ChevronRight, Rows3, Phone, MessageCircle } from 'lucide-react';
+import { Search, Plus, UsersRound, UserPlus, Clock, ChevronLeft, ChevronRight, Rows3, Phone, MessageCircle, X, ArrowLeft } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
@@ -102,6 +102,10 @@ export default function Clientes() {
 
   return (
     <div className="pagina">
+      <button className="btn-volver" onClick={() => navigate(-1)} style={{ marginBottom: 14 }}>
+        <ArrowLeft size={16} strokeWidth={2} /> Volver
+      </button>
+
       <header className="pagina-cabecera" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <span style={{ fontSize: 13, color: 'var(--texto-suave)', fontWeight: 600 }}>
@@ -266,7 +270,15 @@ export default function Clientes() {
               <span className="dialogo-icono" aria-hidden="true">
                 <UserPlus size={20} strokeWidth={2} />
               </span>
-              <h2>Nuevo Cliente</h2>
+              <h2 style={{ flex: 1 }}>Nuevo Cliente</h2>
+              <button
+                type="button"
+                className="btn-cerrar-modal"
+                onClick={() => setMostrarModal(false)}
+                aria-label="Cerrar modal"
+              >
+                <X size={18} strokeWidth={2} />
+              </button>
             </div>
             <div className="campo">
               <label htmlFor="nombre-nuevo-cliente" style={{ fontSize: 13, color: 'var(--texto-suave)' }}>

@@ -1,6 +1,7 @@
-import { NavLink, Outlet, useLocation, Link } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { LayoutDashboard, Users, Wallet, FileBarChart, BellRing, Settings, Menu, LogOut, Plus, Calendar, Store, Receipt } from 'lucide-react';
+import { LayoutDashboard, Users, Wallet, FileBarChart, BellRing, Settings, Menu, LogOut, Plus, Calendar, Store, Receipt, ArrowLeft } from 'lucide-react';
+import { App as CapApp } from '@capacitor/app';
 import { api } from '../api.js';
 import { borrarToken } from '../sesion.js';
 import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
@@ -68,12 +69,75 @@ function Navegacion({ variante, colapsado, onFiarClick }) {
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const pagina = ENLACES.find((e) => e.to === location.pathname);
   const [colapsado, setColapsado] = useState(() => localStorage.getItem('sidebarColapsado') === '1');
   const [conectado, setConectado] = useState(true);
   const [usuario, setUsuario] = useState(null);
   const [modalFiarAbierto, setModalFiarAbierto] = useState(false);
   const [comprobanteActivo, setComprobanteActivo] = useState(null); // { movimiento, cliente }
+
+  // Soporte para botón "Atrás" de hardware (Android/Tablet) y tecla Escape
+  useEffect(() => {
+    let listener = null;
+
+    async function registrarBotonAtras() {
+      try {
+        listener = await CapApp.addListener('backButton', () => {
+          // 1. Si el modal de fiar está abierto, cerrarlo
+          if (modalFiarAbierto) {
+            setModalFiarAbierto(false);
+            return;
+          }
+          // 2. Si el comprobante está abierto, cerrarlo
+          if (comprobanteActivo) {
+            setComprobanteActivo(null);
+            return;
+          }
+          // 3. Si hay cualquier otro diálogo modal/overlay abierto en la pantalla
+          const overlay = document.querySelector('.overlay');
+          if (overlay) {
+            const btnCerrar = overlay.querySelector('.btn-cerrar-modal, .dialogo-acciones button[type="button"]');
+            if (btnCerrar) {
+              btnCerrar.click();
+              return;
+            }
+            overlay.click();
+            return;
+          }
+          // 4. Si estamos en una subpantalla (ej: /clientes/:id, /cobranzas, /caja), volver atrás
+          if (location.pathname !== '/') {
+            navigate(-1);
+            return;
+          }
+          // 5. Si ya estamos en la raíz '/', salir o enviar a background
+          CapApp.exitApp();
+        });
+      } catch {
+        // En entorno de navegador estándar
+      }
+    }
+
+    registrarBotonAtras();
+
+    function onKeyDown(e) {
+      if (e.key === 'Escape') {
+        if (modalFiarAbierto) return setModalFiarAbierto(false);
+        if (comprobanteActivo) return setComprobanteActivo(null);
+        const overlay = document.querySelector('.overlay');
+        if (overlay) {
+          const btnCerrar = overlay.querySelector('.btn-cerrar-modal, .dialogo-acciones button[type="button"]');
+          if (btnCerrar) btnCerrar.click();
+        }
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      if (listener) listener.remove();
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [modalFiarAbierto, comprobanteActivo, location.pathname, navigate]);
 
   function alternarSidebar() {
     setColapsado((actual) => {
@@ -113,9 +177,25 @@ export default function Layout() {
     setComprobanteActivo({ movimiento, cliente });
   }
 
+  const esRaiz = location.pathname === '/';
+
   return (
     <div className="app-shell">
       <header className="barra-superior">
+        {/* Botón Atrás en Header para Tablets y Móvil */}
+        {!esRaiz && (
+          <button
+            type="button"
+            className="btn-header-atras"
+            onClick={() => navigate(-1)}
+            aria-label="Volver a la pantalla anterior"
+            title="Volver"
+          >
+            <ArrowLeft size={18} strokeWidth={2.5} />
+            <span className="btn-header-atras-texto">Atrás</span>
+          </button>
+        )}
+
         <button
           className="btn-colapsar"
           onClick={alternarSidebar}
@@ -123,6 +203,7 @@ export default function Layout() {
         >
           <Menu size={20} strokeWidth={2} aria-hidden="true" />
         </button>
+
         <Link to="/" style={{ textDecoration: 'none' }} className="marca">
           <span className="marca-icono" aria-hidden="true">
             <Wallet size={18} strokeWidth={2} />

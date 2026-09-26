@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { AlertCircle, Clock, MessageCircle, AlertTriangle, Search, ChevronRight, Phone, ShieldCheck, DollarSign } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AlertCircle, Clock, MessageCircle, AlertTriangle, Search, ChevronRight, Phone, ShieldCheck, DollarSign, ArrowLeft } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
@@ -13,6 +13,7 @@ function diasSinActividad(ultimaActividad) {
 }
 
 export default function Cobranzas() {
+  const navigate = useNavigate();
   const { mostrarError } = useToast();
   const [clientes, setClientes] = useState([]);
   const [perfil, setPerfil] = useState(null);
@@ -68,6 +69,10 @@ export default function Cobranzas() {
 
   return (
     <div className="pagina">
+      <button className="btn-volver" onClick={() => navigate(-1)} style={{ marginBottom: 14 }}>
+        <ArrowLeft size={16} strokeWidth={2} /> Volver al Resumen
+      </button>
+
       {/* 1. Métricas de Cartera */}
       <div className="cobranzas-kpis-grid">
         <div className="cobranzas-kpi-card alerta">

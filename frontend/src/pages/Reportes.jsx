@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, FileX, Download, Rows3, Calendar, ArrowUpRight, ArrowDownLeft, Wallet, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, FileX, Download, Rows3, Calendar, ArrowUpRight, ArrowDownLeft, Wallet, TrendingUp, ArrowLeft } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -65,6 +66,7 @@ async function exportarCSV(reporte, desde, hasta) {
 }
 
 export default function Reportes() {
+  const navigate = useNavigate();
   const { mostrarError } = useToast();
   const [desde, setDesde] = useState(hoyISO());
   const [hasta, setHasta] = useState(hoyISO());
@@ -131,6 +133,10 @@ export default function Reportes() {
 
   return (
     <div className="pagina">
+      <button className="btn-volver" onClick={() => navigate(-1)} style={{ marginBottom: 14 }}>
+        <ArrowLeft size={16} strokeWidth={2} /> Volver
+      </button>
+
       {/* Selector de Rango y Presets */}
       <section className="panel">
         <div className="panel-cuerpo">

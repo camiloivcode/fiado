@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Wallet, Inbox, Pencil, Trash2, Calculator, TrendingUp, Award, PiggyBank, RotateCcw, Check, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Wallet, Inbox, Pencil, Trash2, Calculator, TrendingUp, Award, PiggyBank, RotateCcw, Check, Sparkles, X, ArrowLeft } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
@@ -20,6 +21,7 @@ const DENOMINACIONES = [
 ];
 
 export default function Caja() {
+  const navigate = useNavigate();
   const { mostrarError, mostrarExito } = useToast();
   const [historial, setHistorial] = useState([]);
   const [monto, setMonto] = useState('');
@@ -137,6 +139,10 @@ export default function Caja() {
 
   return (
     <div className="pagina">
+      <button className="btn-volver" onClick={() => navigate(-1)} style={{ marginBottom: 14 }}>
+        <ArrowLeft size={16} strokeWidth={2} /> Volver
+      </button>
+
       {/* 1. Métricas mensuales */}
       <div className="caja-kpis-grid">
         <div className="caja-kpi-card">
@@ -366,7 +372,15 @@ export default function Caja() {
               <span className="dialogo-icono" aria-hidden="true">
                 <Pencil size={18} strokeWidth={2} />
               </span>
-              <h2>Editar cierre de caja</h2>
+              <h2 style={{ flex: 1 }}>Editar cierre de caja</h2>
+              <button
+                type="button"
+                className="btn-cerrar-modal"
+                onClick={() => setCajaAEditar(null)}
+                aria-label="Cerrar modal"
+              >
+                <X size={18} strokeWidth={2} />
+              </button>
             </div>
             <MontoInput
               autoFocus

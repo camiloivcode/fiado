@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Store, Phone, CreditCard, Save, Download, LogOut, Check, Shield } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Store, Phone, CreditCard, Save, Download, LogOut, Check, Shield, ArrowLeft } from 'lucide-react';
 import { api } from '../api.js';
 import { borrarToken } from '../sesion.js';
 import { useToast } from '../components/Toast.jsx';
 
 export default function Ajustes() {
+  const navigate = useNavigate();
   const { mostrarError, mostrarExito } = useToast();
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -85,6 +87,10 @@ export default function Ajustes() {
 
   return (
     <div className="pagina">
+      <button className="btn-volver" onClick={() => navigate(-1)} style={{ marginBottom: 14 }}>
+        <ArrowLeft size={16} strokeWidth={2} /> Volver
+      </button>
+
       {/* 1. Datos de la Tienda / Negocio */}
       <section className="panel">
         <div className="panel-cabecera">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Trash2, UserRoundX, Pencil, Phone, MessageCircle, Share2, Receipt, ShieldCheck, ShoppingBag, Clock } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Trash2, UserRoundX, Pencil, Phone, MessageCircle, Share2, Receipt, ShieldCheck, ShoppingBag, Clock, X } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
@@ -396,7 +396,15 @@ export default function Cliente() {
               <span className="dialogo-icono" aria-hidden="true">
                 <Pencil size={18} strokeWidth={2} />
               </span>
-              <h2>Editar cliente</h2>
+              <h2 style={{ flex: 1 }}>Editar cliente</h2>
+              <button
+                type="button"
+                className="btn-cerrar-modal"
+                onClick={() => setDialogo(null)}
+                aria-label="Cerrar modal"
+              >
+                <X size={18} strokeWidth={2} />
+              </button>
             </div>
             <div className="campo">
               <label htmlFor="nombre-editado" style={{ fontSize: 13, color: 'var(--texto-suave)' }}>Nombre completo *</label>
@@ -452,10 +460,18 @@ export default function Cliente() {
                   ? <ArrowUpRight size={18} strokeWidth={2} />
                   : <ArrowDownLeft size={18} strokeWidth={2} />}
               </span>
-              <div>
+              <div style={{ flex: 1 }}>
                 <h2>{dialogo === 'fiado' ? 'Nuevo Fiado' : 'Registrar Abono'}</h2>
                 <span style={{ fontSize: 12, color: 'var(--texto-suave)' }}>{cliente.nombre}</span>
               </div>
+              <button
+                type="button"
+                className="btn-cerrar-modal"
+                onClick={() => setDialogo(null)}
+                aria-label="Cerrar modal"
+              >
+                <X size={18} strokeWidth={2} />
+              </button>
             </div>
 
             <MontoInput
