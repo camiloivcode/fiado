@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Receipt, X, MessageCircle, Calendar, ShoppingBag, Download, AlertCircle, ShieldCheck, Phone, Share2, Loader2 } from 'lucide-react';
+import { Receipt, X, MessageCircle, Calendar, ShoppingBag, Download, AlertCircle, Phone, Loader2, Check } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos } from '../format.js';
 import { useToast } from './Toast.jsx';
-import { compartirFacturaConImagen, descargarImagenFactura, abrirChatWhatsAppDirecto } from '../compartirComprobante.js';
+import ConfirmDialog from './ConfirmDialog.jsx';
+import { compartirFacturaConImagen, descargarImagenFactura } from '../compartirComprobante.js';
 
 export default function FacturaTotalModal({ cliente, tienda, movimientos: movimientosProp, onClose }) {
   const { mostrarExito, mostrarError } = useToast();
@@ -11,6 +12,22 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
   const [enviando, setEnviando] = useState(false);
   const [movimientos, setMovimientos] = useState(movimientosProp || []);
   const [cargandoMovs, setCargandoMovs] = useState(!movimientosProp);
+  const [perfilTienda, setPerfilTienda] = useState(tienda || null);
+
+  // Estados para gestión de teléfono y alertas
+  const [telefonoCliente, setTelefonoCliente] = useState(cliente?.telefono || '');
+  const [mostrarModalTelefono, setMostrarModalTelefono] = useState(false);
+  const [telefonoInput, setTelefonoInput] = useState(cliente?.telefono || '');
+  const [guardandoTelefono, setGuardandoTelefono] = useState(false);
+  const [alertaSinWhatsapp, setAlertaSinWhatsapp] = useState(false);
+
+  useEffect(() => {
+    if (!perfilTienda) {
+      api.perfil()
+        .then((p) => { if (p) setPerfilTienda(p); })
+        .catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     if (movimientosProp) {
@@ -19,19 +36,21 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
     }
     if (cliente?.id) {
       setCargandoMovs(true);
-      api.obtenerCliente(cliente.id)
+      api.movimientosDeCliente(cliente.id)
         .then((datos) => {
-          if (datos?.movimientos) setMovimientos(datos.movimientos);
+          if (Array.isArray(datos)) setMovimientos(datos);
         })
-        .catch(() => {})
+        .catch((err) => {
+          console.error('Error al cargar movimientos para factura:', err);
+        })
         .finally(() => setCargandoMovs(false));
     }
   }, [cliente?.id, movimientosProp]);
 
   if (!cliente) return null;
 
-  const nombreTienda = tienda?.nombre || 'Mi Tienda';
-  const numeroNequi = tienda?.nequi ? tienda.nequi.trim() : '';
+  const nombreTienda = perfilTienda?.nombre || 'Mi Tienda';
+  const numeroNequi = perfilTienda?.nequi ? perfilTienda.nequi.trim() : '';
   const numeroSoloDigitos = numeroNequi.replace(/\D/g, '') || numeroNequi;
 
   const fechaHoy = new Date().toLocaleDateString('es-CO', {
@@ -41,9 +60,8 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
 
-  // Tomamos los últimos fiados y compras para el desglose (máximo 6 para que quepa bien en el tique)
-  const fiadosRecientes = movimientos
-    .filter((m) => m.tipo === 'fiado')
+  const fiadosRecientes = (Array.isArray(movimientos) ? movimientos : [])
+    .filter((m) => m && m.tipo === 'fiado')
     .slice(0, 6);
 
   function construirTextoCaption() {
@@ -63,38 +81,72 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
     );
   }
 
-  async function handleCompartirWhatsApp() {
+  async function handleEnviarWhatsApp(telDirecto) {
+    const telAUsar = (telDirecto !== undefined ? telDirecto : telefonoCliente || '').trim();
+    const telLimpio = telAUsar.replace(/\D/g, '');
+
+    // 1. Si no tiene teléfono guardado o es inválido, pedirlo en alerta del sistema
+    if (!telLimpio || telLimpio.length < 7) {
+      setTelefonoInput(telAUsar);
+      setMostrarModalTelefono(true);
+      return;
+    }
+
     if (!ticketRef.current || enviando) return;
     setEnviando(true);
+
     try {
       const nombreArchivo = `factura_total_${cliente.nombre.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.png`;
       const textoMensaje = construirTextoCaption();
+
+      // Copiar el texto completo con el número al portapapeles por seguridad
+      try {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(textoMensaje);
+        }
+      } catch {}
 
       await compartirFacturaConImagen({
         nodoElemento: ticketRef.current,
         titulo: `Factura Total ${nombreTienda} - ${cliente.nombre}`,
         textoMensaje,
         nombreArchivo,
-        telefonoCliente: cliente.telefono,
+        telefonoCliente: telAUsar,
       });
 
       mostrarExito('¡Factura enviada con éxito!');
     } catch (err) {
-      console.error(err);
-      mostrarError('No se pudo generar la imagen de la factura');
+      console.error('Error al compartir factura por WhatsApp:', err);
+      // Alerta en el sistema si WhatsApp no está disponible o el número no abre
+      setAlertaSinWhatsapp(true);
     } finally {
       setEnviando(false);
     }
   }
 
-  function handleAbrirWhatsAppDirecto() {
-    if (!cliente.telefono) {
-      mostrarError('Este cliente no tiene teléfono guardado');
+  async function handleGuardarTelefonoYEnviar(e) {
+    if (e) e.preventDefault();
+    const limpio = telefonoInput.replace(/\D/g, '');
+    if (!limpio || limpio.length < 7) {
+      mostrarError('Ingresa un número de celular válido de al menos 7 dígitos');
       return;
     }
-    const textoMensaje = construirTextoCaption();
-    abrirChatWhatsAppDirecto(cliente.telefono, textoMensaje);
-    mostrarExito(`Abriendo chat con ${cliente.nombre}...`);
+
+    setGuardandoTelefono(true);
+    try {
+      const telNuevo = telefonoInput.trim();
+      await api.editarCliente(cliente.id, cliente.nombre, telNuevo, cliente.limiteCredito);
+      cliente.telefono = telNuevo;
+      setTelefonoCliente(telNuevo);
+      setMostrarModalTelefono(false);
+      mostrarExito('Teléfono guardado');
+      // Proceder de inmediato a enviar la factura
+      handleEnviarWhatsApp(telNuevo);
+    } catch (err) {
+      mostrarError('No se pudo guardar el teléfono: ' + err.message);
+    } finally {
+      setGuardandoTelefono(false);
+    }
   }
 
   async function handleDescargarImagen() {
@@ -102,10 +154,10 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
     try {
       const nombreArchivo = `factura_total_${cliente.nombre.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.png`;
       await descargarImagenFactura(ticketRef.current, nombreArchivo);
-      mostrarExito('Factura guardada');
+      mostrarExito('Factura guardada en tu dispositivo');
     } catch (err) {
       console.error(err);
-      mostrarError('Error al descargar la imagen');
+      mostrarError('Error al guardar la imagen');
     }
   }
 
@@ -116,15 +168,15 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
           <X size={18} strokeWidth={2} />
         </button>
 
-        {/* Diseño tipo Tique Térmico Digital de Cuenta Consolidada */}
+        {/* Tique Térmico Digital de Cuenta Consolidada */}
         <div className="tique-contenedor" ref={ticketRef}>
           <div className="tique-cabecera">
             <span className="tique-icono-marca">
               <Receipt size={22} strokeWidth={2} />
             </span>
             <h3 className="tique-tienda">{nombreTienda}</h3>
-            {tienda?.telefono && (
-              <span className="tique-telefono-tienda">Tel: {tienda.telefono}</span>
+            {perfilTienda?.telefono && (
+              <span className="tique-telefono-tienda">Tel: {perfilTienda.telefono}</span>
             )}
             <span className="tique-tipo-badge factura-total">
               Factura de Saldo Total
@@ -138,14 +190,14 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
               <span className="tique-clave">Cliente</span>
               <strong className="tique-valor">{cliente.nombre}</strong>
             </div>
-            {cliente.telefono && (
+            {telefonoCliente && (
               <div className="tique-fila">
                 <span className="tique-clave">Teléfono</span>
-                <span className="tique-valor">{cliente.telefono}</span>
+                <span className="tique-valor">{telefonoCliente}</span>
               </div>
             )}
             <div className="tique-fila">
-              <span className="tique-clave">Fecha de emisión</span>
+              <span className="tique-clave">Fecha de corte</span>
               <span className="tique-valor">{fechaHoy}, {horaHoy}</span>
             </div>
 
@@ -156,7 +208,7 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
               <span className="tique-gran-total-sub">Moneda oficial: Pesos Colombianos (COP)</span>
             </div>
 
-            {/* Si tiene cupo configurado */}
+            {/* Cupo de crédito si aplica */}
             {cliente.limiteCredito > 0 && (
               <div className="tique-fila" style={{ fontSize: 12, padding: '4px 0' }}>
                 <span className="tique-clave">Cupo asignado: {formatearPesos(cliente.limiteCredito)}</span>
@@ -168,7 +220,7 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
               </div>
             )}
 
-            {/* Desglose de fiados / compras recientes */}
+            {/* Desglose de fiados recientes */}
             {fiadosRecientes.length > 0 && (
               <div className="tique-desglose-seccion">
                 <div className="tique-desglose-titulo">
@@ -217,40 +269,23 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
           <div className="tique-borde-zigzag" />
         </div>
 
-        {/* Acciones */}
+        {/* Acciones: UN SOLO BOTÓN PRINCIPAL DE WHATSAPP */}
         <div className="comprobante-acciones">
-          {cliente.telefono ? (
-            <button
-              type="button"
-              className="btn-whatsapp-directo-cliente btn-con-carga"
-              onClick={handleAbrirWhatsAppDirecto}
-              disabled={enviando}
-            >
-              <MessageCircle size={18} strokeWidth={2.5} />
-              <span>Abrir WhatsApp directo con {cliente.nombre}</span>
-            </button>
-          ) : (
-            <div className="tique-aviso-telefono">
-              <AlertCircle size={15} />
-              <span>Sin teléfono guardado. Usa el botón abajo para compartir la factura.</span>
-            </div>
-          )}
-
           <button
             type="button"
             className="btn-whatsapp-comprobante btn-con-carga"
-            onClick={handleCompartirWhatsApp}
+            onClick={() => handleEnviarWhatsApp()}
             disabled={enviando}
           >
             {enviando ? (
               <>
-                <Loader2 size={16} className="icono-girando" strokeWidth={2.5} />
-                <span>Generando imagen de la factura...</span>
+                <Loader2 size={18} className="icono-girando" strokeWidth={2.5} />
+                <span>Generando factura para WhatsApp...</span>
               </>
             ) : (
               <>
-                <Share2 size={16} strokeWidth={2.2} />
-                <span>Compartir Imagen de la Factura (PNG)</span>
+                <MessageCircle size={19} strokeWidth={2.5} />
+                <span>Enviar Factura por WhatsApp</span>
               </>
             )}
           </button>
@@ -276,6 +311,94 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
             </button>
           </div>
         </div>
+
+        {/* Modal de Alerta: Falta Teléfono para WhatsApp */}
+        {mostrarModalTelefono && (
+          <div className="overlay" style={{ zIndex: 1100 }}>
+            <form className="dialogo" onSubmit={handleGuardarTelefonoYEnviar} role="dialog" aria-modal="true">
+              <div className="dialogo-cabecera">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className="dialogo-icono amarillo" style={{ margin: 0 }}>
+                    <Phone size={20} strokeWidth={2.2} />
+                  </span>
+                  <h3 style={{ margin: 0, fontSize: 16 }}>Falta número de WhatsApp</h3>
+                </div>
+                <button
+                  type="button"
+                  className="btn-cerrar-modal"
+                  onClick={() => setMostrarModalTelefono(false)}
+                  disabled={guardandoTelefono}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="dialogo-mensaje">
+                El cliente <strong>{cliente.nombre}</strong> no tiene un número registrado. Escribe su celular para guardarlo y enviarle la factura por WhatsApp de inmediato:
+              </p>
+
+              <div className="campo" style={{ margin: '8px 0' }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--texto-suave)' }}>
+                  Número de Celular / WhatsApp:
+                </label>
+                <div className="input-prefijo-wrap">
+                  <span className="prefijo-co">+57</span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="300 123 4567"
+                    value={telefonoInput}
+                    onChange={(e) => setTelefonoInput(e.target.value)}
+                    autoFocus
+                    disabled={guardandoTelefono}
+                  />
+                </div>
+              </div>
+
+              <div className="dialogo-acciones">
+                <button
+                  type="button"
+                  onClick={() => setMostrarModalTelefono(false)}
+                  disabled={guardandoTelefono}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primario btn-con-carga"
+                  disabled={guardandoTelefono}
+                >
+                  {guardandoTelefono ? (
+                    <>
+                      <Loader2 size={16} className="icono-girando" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <span>Guardar y Enviar</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Modal de Alerta: Error al abrir WhatsApp o número sin WhatsApp */}
+        {alertaSinWhatsapp && (
+          <ConfirmDialog
+            titulo="Aviso de WhatsApp"
+            mensaje={`No se pudo conectar directamente con WhatsApp para el número (${telefonoCliente || 'sin número'}). Por favor verifica que el número tenga WhatsApp activo y que tengas la aplicación instalada en este dispositivo.`}
+            textoConfirmar="Cambiar número"
+            textoCancelar="Entendido"
+            tipoBoton="btn-advertencia"
+            tipoIcono="advertencia"
+            onConfirmar={() => {
+              setAlertaSinWhatsapp(false);
+              setTelefonoInput(telefonoCliente);
+              setMostrarModalTelefono(true);
+            }}
+            onCancelar={() => setAlertaSinWhatsapp(false)}
+          />
+        )}
       </div>
     </div>
   );

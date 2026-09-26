@@ -175,8 +175,8 @@ export default function Layout() {
     location.reload();
   }
 
-  function alGuardarFiado(movimiento, cliente) {
-    setComprobanteActivo({ movimiento, cliente });
+  function alGuardarFiado() {
+    // Al guardar un fiado no se abre el modal automáticamente (solicitado por el usuario)
   }
 
   const esRaiz = location.pathname === '/';

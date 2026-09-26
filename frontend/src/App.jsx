@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Wallet, Loader2 } from 'lucide-react';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { ToastProvider } from './components/Toast.jsx';
 import BannerRender from './components/BannerRender.jsx';
 import Layout from './components/Layout.jsx';
@@ -37,8 +38,9 @@ export default function App() {
   }, []);
 
   return (
-    <ToastProvider>
-      <BannerRender />
+    <ErrorBoundary>
+      <ToastProvider>
+        <BannerRender />
       {usuario === undefined ? (
         <div className="pantalla-carga-inicial">
           <div className="splash-tarjeta">
@@ -72,5 +74,6 @@ export default function App() {
         </Routes>
       )}
     </ToastProvider>
+  </ErrorBoundary>
   );
 }

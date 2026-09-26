@@ -105,10 +105,7 @@ export default function Cliente() {
       setMonto('');
       setDescripcion('');
       setDialogo(null);
-      mostrarExito(dialogo === 'fiado' ? 'Fiado registrado' : 'Abono registrado');
-
-      // Mostrar comprobante digital con 1-tap WhatsApp
-      setComprobanteParaMostrar({ movimiento: mov, cliente: clienteActualizado });
+      mostrarExito(dialogo === 'fiado' ? 'Fiado registrado con éxito' : 'Abono registrado con éxito');
       cargar();
     } catch (e) {
       mostrarError(e.message);

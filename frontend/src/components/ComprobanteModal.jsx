@@ -1,13 +1,31 @@
-import { useRef, useState } from 'react';
-import { Receipt, X, MessageCircle, Calendar, ShoppingBag, Download, Check, Sparkles, Share2, AlertCircle, Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Receipt, X, MessageCircle, Calendar, ShoppingBag, Download, Check, Sparkles, AlertCircle, Phone, Loader2 } from 'lucide-react';
+import { api } from '../api.js';
 import { formatearPesos } from '../format.js';
 import { useToast } from './Toast.jsx';
-import { compartirFacturaConImagen, descargarImagenFactura, abrirChatWhatsAppDirecto } from '../compartirComprobante.js';
+import ConfirmDialog from './ConfirmDialog.jsx';
+import { compartirFacturaConImagen, descargarImagenFactura } from '../compartirComprobante.js';
 
 export default function ComprobanteModal({ movimiento, cliente, tienda, onClose }) {
   const { mostrarExito, mostrarError } = useToast();
   const ticketRef = useRef(null);
   const [enviando, setEnviando] = useState(false);
+  const [perfilTienda, setPerfilTienda] = useState(tienda || null);
+
+  // Estados para gestión de teléfono y alertas
+  const [telefonoCliente, setTelefonoCliente] = useState(cliente?.telefono || '');
+  const [mostrarModalTelefono, setMostrarModalTelefono] = useState(false);
+  const [telefonoInput, setTelefonoInput] = useState(cliente?.telefono || '');
+  const [guardandoTelefono, setGuardandoTelefono] = useState(false);
+  const [alertaSinWhatsapp, setAlertaSinWhatsapp] = useState(false);
+
+  useEffect(() => {
+    if (!perfilTienda) {
+      api.perfil()
+        .then((p) => { if (p) setPerfilTienda(p); })
+        .catch(() => {});
+    }
+  }, []);
 
   if (!movimiento || !cliente) return null;
 
@@ -20,8 +38,8 @@ export default function ComprobanteModal({ movimiento, cliente, tienda, onClose 
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
 
-  const nombreTienda = tienda?.nombre || 'Mi Tienda';
-  const numeroNequi = tienda?.nequi ? tienda.nequi.trim() : '';
+  const nombreTienda = perfilTienda?.nombre || 'Mi Tienda';
+  const numeroNequi = perfilTienda?.nequi ? perfilTienda.nequi.trim() : '';
   const numeroSoloDigitos = numeroNequi.replace(/\D/g, '') || numeroNequi;
 
   function construirTextoCaption() {
@@ -42,38 +60,70 @@ export default function ComprobanteModal({ movimiento, cliente, tienda, onClose 
     );
   }
 
-  async function handleCompartirWhatsApp() {
+  async function handleEnviarWhatsApp(telDirecto) {
+    const telAUsar = (telDirecto !== undefined ? telDirecto : telefonoCliente || '').trim();
+    const telLimpio = telAUsar.replace(/\D/g, '');
+
+    // Si el cliente no tiene número, alertar en el sistema y permitir agregarlo de una vez
+    if (!telLimpio || telLimpio.length < 7) {
+      setTelefonoInput(telAUsar);
+      setMostrarModalTelefono(true);
+      return;
+    }
+
     if (!ticketRef.current || enviando) return;
     setEnviando(true);
+
     try {
       const nombreArchivo = `recibo_${cliente.nombre.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.png`;
       const textoMensaje = construirTextoCaption();
+
+      try {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(textoMensaje);
+        }
+      } catch {}
 
       await compartirFacturaConImagen({
         nodoElemento: ticketRef.current,
         titulo: `Recibo ${nombreTienda} - ${cliente.nombre}`,
         textoMensaje,
         nombreArchivo,
-        telefonoCliente: cliente.telefono,
+        telefonoCliente: telAUsar,
       });
 
-      mostrarExito('¡Comprobante generado con éxito!');
+      mostrarExito('¡Comprobante enviado con éxito!');
     } catch (err) {
-      console.error(err);
-      mostrarError('No se pudo generar la imagen del comprobante');
+      console.error('Error al compartir comprobante por WhatsApp:', err);
+      setAlertaSinWhatsapp(true);
     } finally {
       setEnviando(false);
     }
   }
 
-  function handleAbrirWhatsAppDirecto() {
-    if (!cliente.telefono) {
-      mostrarError('Este cliente no tiene número de teléfono registrado');
+  async function handleGuardarTelefonoYEnviar(e) {
+    if (e) e.preventDefault();
+    const limpio = telefonoInput.replace(/\D/g, '');
+    if (!limpio || limpio.length < 7) {
+      mostrarError('Ingresa un número de celular válido de al menos 7 dígitos');
       return;
     }
-    const textoMensaje = construirTextoCaption();
-    abrirChatWhatsAppDirecto(cliente.telefono, textoMensaje);
-    mostrarExito(`Abriendo chat con ${cliente.nombre}...`);
+
+    setGuardandoTelefono(true);
+    try {
+      const telNuevo = telefonoInput.trim();
+      await api.editarCliente(cliente.id, cliente.nombre, telNuevo, cliente.limiteCredito);
+      cliente.telefono = telNuevo;
+      setTelefonoCliente(telNuevo);
+      setMostrarModalTelefono(false);
+      mostrarExito('Teléfono guardado');
+      // Proceder de inmediato a enviar el comprobante
+      handleEnviarWhatsApp(telNuevo);
+    } catch (err) {
+      mostrarError('No se pudo guardar el teléfono: ' + err.message);
+    } finally {
+      setGuardandoTelefono(false);
+    }
   }
 
   async function handleDescargarImagen() {
@@ -81,10 +131,10 @@ export default function ComprobanteModal({ movimiento, cliente, tienda, onClose 
     try {
       const nombreArchivo = `recibo_${cliente.nombre.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.png`;
       await descargarImagenFactura(ticketRef.current, nombreArchivo);
-      mostrarExito('Imagen descargada');
+      mostrarExito('Comprobante guardado en tu dispositivo');
     } catch (err) {
       console.error(err);
-      mostrarError('Error al descargar la imagen');
+      mostrarError('Error al guardar la imagen');
     }
   }
 
@@ -102,8 +152,8 @@ export default function ComprobanteModal({ movimiento, cliente, tienda, onClose 
               <Receipt size={22} strokeWidth={2} />
             </span>
             <h3 className="tique-tienda">{nombreTienda}</h3>
-            {tienda?.telefono && (
-              <span className="tique-telefono-tienda">Tel: {tienda.telefono}</span>
+            {perfilTienda?.telefono && (
+              <span className="tique-telefono-tienda">Tel: {perfilTienda.telefono}</span>
             )}
             <span className={`tique-tipo-badge ${esFiado ? 'fiado' : 'abono'}`}>
               {esFiado ? 'Tique de Fiado' : 'Tique de Abono'}
@@ -117,6 +167,12 @@ export default function ComprobanteModal({ movimiento, cliente, tienda, onClose 
               <span className="tique-clave">Cliente</span>
               <strong className="tique-valor">{cliente.nombre}</strong>
             </div>
+            {telefonoCliente && (
+              <div className="tique-fila">
+                <span className="tique-clave">Teléfono</span>
+                <span className="tique-valor">{telefonoCliente}</span>
+              </div>
+            )}
             <div className="tique-fila">
               <span className="tique-clave">Fecha y Hora</span>
               <span className="tique-valor">{fechaStr}, {horaStr}</span>
@@ -139,67 +195,49 @@ export default function ComprobanteModal({ movimiento, cliente, tienda, onClose 
             </div>
 
             <div className="tique-fila tique-saldo-fila">
-              <span className="tique-clave">Saldo Total Actual</span>
-              <strong className="tique-saldo-valor">{formatearPesos(cliente.saldo)}</strong>
+              <span className="tique-clave">Saldo total actual</span>
+              <span className="tique-saldo-actual">{formatearPesos(cliente.saldo)}</span>
             </div>
           </div>
 
-          {/* Caja destacada para pago Nequi / Bre-B */}
           {numeroNequi && (
             <div className="tique-caja-pago">
               <div className="tique-pago-encabezado">
                 <span className="tique-pago-titulo">TRANSFERENCIAS NEQUI / BRE-B</span>
-                <span className="tique-pago-alerta">(No Daviplata)</span>
+                <span className="tique-pago-alerta">(No se recibe Daviplata)</span>
               </div>
               <div className="tique-pago-numero-box">
-                <span className="tique-pago-etiqueta">Número para abonos:</span>
+                <span className="tique-pago-etiqueta">Número para pagar:</span>
                 <strong className="tique-pago-numero">{numeroNequi}</strong>
               </div>
-              <span className="tique-pago-indicacion">Copia este número para transferir desde tu app</span>
+              <span className="tique-pago-indicacion">Puedes copiar este número para transferir desde tu Nequi o Bre-B</span>
             </div>
           )}
 
           <div className="tique-pie-agradecimiento">
-            ¡Muchas gracias por su preferencia!
+            ¡Gracias por preferirnos! Guarde este recibo como soporte de su cuenta.
           </div>
 
           <div className="tique-borde-zigzag" />
         </div>
 
-        {/* Acciones */}
+        {/* Acciones: UN SOLO BOTÓN PRINCIPAL DE WHATSAPP */}
         <div className="comprobante-acciones">
-          {cliente.telefono ? (
-            <button
-              type="button"
-              className="btn-whatsapp-directo-cliente btn-con-carga"
-              onClick={handleAbrirWhatsAppDirecto}
-              disabled={enviando}
-            >
-              <MessageCircle size={18} strokeWidth={2.5} />
-              <span>Abrir WhatsApp directo con {cliente.nombre}</span>
-            </button>
-          ) : (
-            <div className="tique-aviso-telefono">
-              <AlertCircle size={15} />
-              <span>Sin teléfono guardado. Usa el botón abajo para compartir el comprobante.</span>
-            </div>
-          )}
-
           <button
             type="button"
             className="btn-whatsapp-comprobante btn-con-carga"
-            onClick={handleCompartirWhatsApp}
+            onClick={() => handleEnviarWhatsApp()}
             disabled={enviando}
           >
             {enviando ? (
               <>
-                <Loader2 size={16} className="icono-girando" strokeWidth={2.5} />
-                <span>Generando imagen de alta definición...</span>
+                <Loader2 size={18} className="icono-girando" strokeWidth={2.5} />
+                <span>Generando recibo para WhatsApp...</span>
               </>
             ) : (
               <>
-                <Share2 size={16} strokeWidth={2.2} />
-                <span>Compartir Imagen del Recibo (PNG)</span>
+                <MessageCircle size={19} strokeWidth={2.5} />
+                <span>Enviar Recibo por WhatsApp</span>
               </>
             )}
           </button>
@@ -225,6 +263,94 @@ export default function ComprobanteModal({ movimiento, cliente, tienda, onClose 
             </button>
           </div>
         </div>
+
+        {/* Modal de Alerta: Falta Teléfono para WhatsApp */}
+        {mostrarModalTelefono && (
+          <div className="overlay" style={{ zIndex: 1100 }}>
+            <form className="dialogo" onSubmit={handleGuardarTelefonoYEnviar} role="dialog" aria-modal="true">
+              <div className="dialogo-cabecera">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className="dialogo-icono amarillo" style={{ margin: 0 }}>
+                    <Phone size={20} strokeWidth={2.2} />
+                  </span>
+                  <h3 style={{ margin: 0, fontSize: 16 }}>Falta número de WhatsApp</h3>
+                </div>
+                <button
+                  type="button"
+                  className="btn-cerrar-modal"
+                  onClick={() => setMostrarModalTelefono(false)}
+                  disabled={guardandoTelefono}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="dialogo-mensaje">
+                El cliente <strong>{cliente.nombre}</strong> no tiene un número registrado. Escribe su celular para guardarlo y enviarle su recibo por WhatsApp:
+              </p>
+
+              <div className="campo" style={{ margin: '8px 0' }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--texto-suave)' }}>
+                  Número de Celular / WhatsApp:
+                </label>
+                <div className="input-prefijo-wrap">
+                  <span className="prefijo-co">+57</span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="300 123 4567"
+                    value={telefonoInput}
+                    onChange={(e) => setTelefonoInput(e.target.value)}
+                    autoFocus
+                    disabled={guardandoTelefono}
+                  />
+                </div>
+              </div>
+
+              <div className="dialogo-acciones">
+                <button
+                  type="button"
+                  onClick={() => setMostrarModalTelefono(false)}
+                  disabled={guardandoTelefono}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primario btn-con-carga"
+                  disabled={guardandoTelefono}
+                >
+                  {guardandoTelefono ? (
+                    <>
+                      <Loader2 size={16} className="icono-girando" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <span>Guardar y Enviar</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Modal de Alerta: Error al abrir WhatsApp o número sin WhatsApp */}
+        {alertaSinWhatsapp && (
+          <ConfirmDialog
+            titulo="Aviso de WhatsApp"
+            mensaje={`No se pudo conectar directamente con WhatsApp para el número (${telefonoCliente || 'sin número'}). Por favor verifica que el número tenga WhatsApp activo y que tengas la aplicación instalada en este dispositivo.`}
+            textoConfirmar="Cambiar número"
+            textoCancelar="Entendido"
+            tipoBoton="btn-advertencia"
+            tipoIcono="advertencia"
+            onConfirmar={() => {
+              setAlertaSinWhatsapp(false);
+              setTelefonoInput(telefonoCliente);
+              setMostrarModalTelefono(true);
+            }}
+            onCancelar={() => setAlertaSinWhatsapp(false)}
+          />
+        )}
       </div>
     </div>
   );

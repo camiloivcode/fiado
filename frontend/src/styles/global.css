@@ -2339,5 +2339,42 @@ button:not(:disabled):active,
   line-height: 1.4;
 }
 
+/* Envoltura para campos de teléfono con prefijo de país */
+.input-prefijo-wrap {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--fondo);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
 
+.input-prefijo-wrap:focus-within {
+  border-color: var(--primario);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
 
+.prefijo-co {
+  padding: 0 12px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--texto-suave);
+  background: rgba(0, 0, 0, 0.04);
+  border-right: 1px solid var(--borde);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  user-select: none;
+}
+
+.input-prefijo-wrap input {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 10px 14px !important;
+  font-size: 15px !important;
+  width: 100% !important;
+  color: var(--texto) !important;
+}

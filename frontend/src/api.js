@@ -84,6 +84,14 @@ export const api = {
     }),
   eliminarCliente: (id) => solicitar(`/api/clientes/${id}`, { method: 'DELETE' }),
   movimientosDeCliente: (id) => solicitar(`/api/clientes/${id}/movimientos`),
+  obtenerCliente: async (id) => {
+    try {
+      const movs = await solicitar(`/api/clientes/${id}/movimientos`);
+      return { movimientos: movs };
+    } catch {
+      return { movimientos: [] };
+    }
+  },
   crearMovimiento: (clienteId, tipo, monto, descripcion = '') =>
     solicitar('/api/movimientos', { method: 'POST', body: JSON.stringify({ clienteId, tipo, monto, descripcion }) }),
   eliminarMovimiento: (id) => solicitar(`/api/movimientos/${id}`, { method: 'DELETE' }),
