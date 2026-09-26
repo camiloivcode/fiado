@@ -17,6 +17,7 @@ export default function Cobranzas() {
   const navigate = useNavigate();
   const { mostrarError } = useToast();
   const [clientes, setClientes] = useState([]);
+  const [cargando, setCargando] = useState(true);
   const [perfil, setPerfil] = useState(null);
   const [filtro, setFiltro] = useState('');
   const [tab, setTab] = useState('mora'); // 'mora' | 'cupo' | 'todos'
@@ -32,6 +33,8 @@ export default function Cobranzas() {
       setPerfil(datosPerfil);
     } catch (e) {
       mostrarError(e.message);
+    } finally {
+      setCargando(false);
     }
   }
 
@@ -56,7 +59,11 @@ export default function Cobranzas() {
   function generarMensajeCobro(c) {
     const tienda = perfil?.nombre || 'Mi Tienda';
     const dias = diasSinActividad(c.ultimaActividad);
-    const nequiTxt = perfil?.nequi ? `\n💳 Puedes pagar por Nequi/Daviplata al: ${perfil.nequi}` : '';
+    const numNequi = perfil?.nequi ? perfil.nequi.trim() : '';
+    const soloDigitos = numNequi.replace(/\D/g, '') || numNequi;
+    const nequiTxt = soloDigitos
+      ? `\n\n📲 *Para pagar por NEQUI o BRE-B (No Daviplata):*\n${soloDigitos}\n_(Copia y pega este número en tu app)_`
+      : '';
 
     const mensaje = encodeURIComponent(
       `Hola ${c.nombre}, cordial saludo de parte de *${tienda}*.\n\n` +
@@ -160,7 +167,20 @@ export default function Cobranzas() {
 
         <div className="panel-cuerpo sin-relleno">
           <div className="lista-cobranzas">
-            {filtrados.map((c) => {
+            {cargando ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 18 }}>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div className="skeleton" style={{ width: 40, height: 40, borderRadius: '999px', flexShrink: 0 }} />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="skeleton" style={{ width: '40%', height: 14 }} />
+                      <div className="skeleton" style={{ width: '25%', height: 12 }} />
+                    </div>
+                    <div className="skeleton" style={{ width: 90, height: 24, borderRadius: 6 }} />
+                  </div>
+                ))}
+              </div>
+            ) : filtrados.map((c) => {
               const dias = diasSinActividad(c.ultimaActividad);
               const urlWA = generarMensajeCobro(c);
 
@@ -212,7 +232,7 @@ export default function Cobranzas() {
               );
             })}
 
-            {!filtrados.length && (
+            {!cargando && !filtrados.length && (
               <div className="vacio" style={{ padding: '36px 16px' }}>
                 <ShieldCheck size={36} strokeWidth={1.5} color="var(--verde)" />
                 <p style={{ marginTop: 8, fontWeight: 600 }}>¡Excelente! No hay deudas pendientes en este filtro.</p>

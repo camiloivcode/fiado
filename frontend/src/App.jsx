@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { Wallet, Loader2 } from 'lucide-react';
 import { ToastProvider } from './components/Toast.jsx';
+import BannerRender from './components/BannerRender.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import Resumen from './pages/Resumen.jsx';
@@ -36,7 +38,25 @@ export default function App() {
 
   return (
     <ToastProvider>
-      {usuario === undefined ? null : !usuario ? (
+      <BannerRender />
+      {usuario === undefined ? (
+        <div className="pantalla-carga-inicial">
+          <div className="splash-tarjeta">
+            <div className="splash-logo-wrap">
+              <Wallet size={36} strokeWidth={2.2} />
+            </div>
+            <h1 className="splash-titulo">Fiado</h1>
+            <p className="splash-subtitulo">Control de crédito y caja para tu negocio</p>
+            <div className="splash-loader-bar">
+              <Loader2 size={16} className="icono-girando" strokeWidth={2.5} />
+              <span>Conectando con tu tienda...</span>
+            </div>
+            <div className="splash-aviso-render">
+              <span>💡 Al iniciar tras reposo, el servidor en la nube puede tardar unos segundos en despertar.</span>
+            </div>
+          </div>
+        </div>
+      ) : !usuario ? (
         <Login onIngreso={setUsuario} />
       ) : (
         <Routes>

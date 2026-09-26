@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Receipt, X, MessageCircle, Calendar, ShoppingBag, Download, AlertCircle, ShieldCheck, Phone } from 'lucide-react';
+import { Receipt, X, MessageCircle, Calendar, ShoppingBag, Download, AlertCircle, ShieldCheck, Phone, Share2, Loader2 } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos } from '../format.js';
 import { useToast } from './Toast.jsx';
-import { compartirFacturaConImagen, descargarImagenFactura } from '../compartirComprobante.js';
+import { compartirFacturaConImagen, descargarImagenFactura, abrirChatWhatsAppDirecto } from '../compartirComprobante.js';
 
 export default function FacturaTotalModal({ cliente, tienda, movimientos: movimientosProp, onClose }) {
   const { mostrarExito, mostrarError } = useToast();
@@ -85,6 +85,16 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
     } finally {
       setEnviando(false);
     }
+  }
+
+  function handleAbrirWhatsAppDirecto() {
+    if (!cliente.telefono) {
+      mostrarError('Este cliente no tiene teléfono guardado');
+      return;
+    }
+    const textoMensaje = construirTextoCaption();
+    abrirChatWhatsAppDirecto(cliente.telefono, textoMensaje);
+    mostrarExito(`Abriendo chat con ${cliente.nombre}...`);
   }
 
   async function handleDescargarImagen() {
@@ -209,20 +219,46 @@ export default function FacturaTotalModal({ cliente, tienda, movimientos: movimi
 
         {/* Acciones */}
         <div className="comprobante-acciones">
+          {cliente.telefono ? (
+            <button
+              type="button"
+              className="btn-whatsapp-directo-cliente btn-con-carga"
+              onClick={handleAbrirWhatsAppDirecto}
+              disabled={enviando}
+            >
+              <MessageCircle size={18} strokeWidth={2.5} />
+              <span>Abrir WhatsApp directo con {cliente.nombre}</span>
+            </button>
+          ) : (
+            <div className="tique-aviso-telefono">
+              <AlertCircle size={15} />
+              <span>Sin teléfono guardado. Usa el botón abajo para compartir la factura.</span>
+            </div>
+          )}
+
           <button
             type="button"
-            className="btn-whatsapp-comprobante"
+            className="btn-whatsapp-comprobante btn-con-carga"
             onClick={handleCompartirWhatsApp}
             disabled={enviando}
           >
-            <MessageCircle size={18} strokeWidth={2.5} />
-            <span>{enviando ? 'Generando imagen...' : 'Enviar Factura por WhatsApp con Imagen'}</span>
+            {enviando ? (
+              <>
+                <Loader2 size={16} className="icono-girando" strokeWidth={2.5} />
+                <span>Generando imagen de la factura...</span>
+              </>
+            ) : (
+              <>
+                <Share2 size={16} strokeWidth={2.2} />
+                <span>Compartir Imagen de la Factura (PNG)</span>
+              </>
+            )}
           </button>
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               type="button"
-              className="btn-secundario"
+              className="btn-secundario btn-con-carga"
               onClick={handleDescargarImagen}
               disabled={enviando}
               style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}

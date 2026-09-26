@@ -2,25 +2,62 @@ import { leerToken, borrarToken } from './sesion.js';
 
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
+let peticionesPendientes = 0;
+let temporizadorRender = null;
+let avisadoColdStart = false;
+
+function iniciarMonitoreoPeticion() {
+  peticionesPendientes++;
+  if (peticionesPendientes === 1) {
+    temporizadorRender = setTimeout(() => {
+      avisadoColdStart = true;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('render-cold-start', { detail: { activo: true } }));
+      }
+    }, 1600);
+  }
+}
+
+function finalizarMonitoreoPeticion() {
+  peticionesPendientes = Math.max(0, peticionesPendientes - 1);
+  if (peticionesPendientes === 0) {
+    if (temporizadorRender) {
+      clearTimeout(temporizadorRender);
+      temporizadorRender = null;
+    }
+    if (avisadoColdStart) {
+      avisadoColdStart = false;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('render-cold-start', { detail: { activo: false, conectado: true } }));
+      }
+    }
+  }
+}
+
 async function solicitar(ruta, opciones = {}) {
   const token = leerToken();
-  const respuesta = await fetch(`${BASE}${ruta}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...opciones,
-  });
-  if (respuesta.status === 401 && token) {
-    // la sesión murió (expiró o se revocó desde otro dispositivo): vuelve al login
-    borrarToken();
-    location.reload();
-    return new Promise(() => {}); // corta la cadena; la recarga ya viene en camino
+  iniciarMonitoreoPeticion();
+  try {
+    const respuesta = await fetch(`${BASE}${ruta}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...opciones,
+    });
+    if (respuesta.status === 401 && token) {
+      // la sesión murió (expiró o se revocó desde otro dispositivo): vuelve al login
+      borrarToken();
+      location.reload();
+      return new Promise(() => {}); // corta la cadena; la recarga ya viene en camino
+    }
+    if (respuesta.status === 204) return null;
+    const datos = await respuesta.json();
+    if (!respuesta.ok) throw new Error(datos.error || 'Error inesperado');
+    return datos;
+  } finally {
+    finalizarMonitoreoPeticion();
   }
-  if (respuesta.status === 204) return null;
-  const datos = await respuesta.json();
-  if (!respuesta.ok) throw new Error(datos.error || 'Error inesperado');
-  return datos;
 }
 
 export const api = {

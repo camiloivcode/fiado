@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, Phone, CreditCard, Save, Download, LogOut, Check, Shield, ArrowLeft } from 'lucide-react';
+import { Store, Phone, CreditCard, Save, Download, LogOut, Check, Shield, ArrowLeft, Loader2 } from 'lucide-react';
 import { api } from '../api.js';
 import { borrarToken } from '../sesion.js';
 import { useToast } from '../components/Toast.jsx';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
 
 export default function Ajustes() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function Ajustes() {
   const [email, setEmail] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const [confirmarLogout, setConfirmarLogout] = useState(false);
 
   useEffect(() => {
     async function cargar() {
@@ -137,9 +139,18 @@ export default function Ajustes() {
               <span className="campo-ayuda">Se incluirá en la factura con imagen y en el texto de WhatsApp para que el cliente copie y pegue el número directamente en su app de Nequi o Bre-B.</span>
             </div>
 
-            <button type="submit" className="btn-primario" disabled={guardando}>
-              <Save size={16} strokeWidth={2} />
-              {guardando ? 'Guardando...' : 'Guardar Cambios'}
+            <button type="submit" className="btn-primario btn-con-carga" disabled={guardando}>
+              {guardando ? (
+                <>
+                  <Loader2 size={16} className="icono-girando" strokeWidth={2.5} />
+                  <span>Guardando ajustes...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={16} strokeWidth={2} />
+                  <span>Guardar Cambios</span>
+                </>
+              )}
             </button>
           </form>
         </div>
@@ -159,13 +170,22 @@ export default function Ajustes() {
           </p>
           <button
             type="button"
-            className="btn-secundario"
+            className="btn-secundario btn-con-carga"
             onClick={exportarCopiaSeguridad}
             disabled={exportando}
             style={{ padding: '10px 16px', fontWeight: 600 }}
           >
-            <Download size={16} strokeWidth={2} />
-            {exportando ? 'Generando archivo...' : 'Exportar Copia de Seguridad (.json)'}
+            {exportando ? (
+              <>
+                <Loader2 size={16} className="icono-girando" strokeWidth={2.5} />
+                <span>Generando archivo...</span>
+              </>
+            ) : (
+              <>
+                <Download size={16} strokeWidth={2} />
+                <span>Exportar Copia de Seguridad (.json)</span>
+              </>
+            )}
           </button>
         </div>
       </section>
@@ -183,13 +203,27 @@ export default function Ajustes() {
           <button
             type="button"
             className="btn-secundario"
-            onClick={cerrarSesion}
+            onClick={() => setConfirmarLogout(true)}
             style={{ color: 'var(--rojo)', borderColor: 'rgba(220, 38, 38, 0.2)' }}
           >
             <LogOut size={16} strokeWidth={2} /> Cerrar Sesión
           </button>
         </div>
       </section>
+
+      {/* Confirmación de cierre de sesión */}
+      {confirmarLogout && (
+        <ConfirmDialog
+          titulo="¿Cerrar sesión?"
+          mensaje="¿Estás seguro de que deseas salir del sistema? Tendrás que iniciar sesión nuevamente con tu correo y clave."
+          textoConfirmar="Sí, cerrar sesión"
+          textoCancelar="Continuar en la app"
+          tipoBoton="btn-peligro"
+          tipoIcono="advertencia"
+          onConfirmar={cerrarSesion}
+          onCancelar={() => setConfirmarLogout(false)}
+        />
+      )}
     </div>
   );
 }

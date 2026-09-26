@@ -7,6 +7,7 @@ import { borrarToken } from '../sesion.js';
 import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
 import ModalFiarRapido from './ModalFiarRapido.jsx';
 import ComprobanteModal from './ComprobanteModal.jsx';
+import ConfirmDialog from './ConfirmDialog.jsx';
 
 const ENLACES = [
   { to: '/', etiqueta: 'Resumen', Icono: LayoutDashboard },
@@ -76,6 +77,7 @@ export default function Layout() {
   const [usuario, setUsuario] = useState(null);
   const [modalFiarAbierto, setModalFiarAbierto] = useState(false);
   const [comprobanteActivo, setComprobanteActivo] = useState(null); // { movimiento, cliente }
+  const [confirmarLogout, setConfirmarLogout] = useState(false);
 
   // Soporte para botón "Atrás" de hardware (Android/Tablet) y tecla Escape
   useEffect(() => {
@@ -236,7 +238,12 @@ export default function Layout() {
             <Calendar size={13} strokeWidth={1.75} aria-hidden="true" />
             {FECHA_HOY}
           </span>
-          <button className="btn-colapsar" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión">
+          <button
+            className="btn-colapsar"
+            onClick={() => setConfirmarLogout(true)}
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+          >
             <LogOut size={18} strokeWidth={2} aria-hidden="true" />
           </button>
         </span>
@@ -296,6 +303,20 @@ export default function Layout() {
           cliente={comprobanteActivo.cliente}
           tienda={usuario}
           onClose={() => setComprobanteActivo(null)}
+        />
+      )}
+
+      {/* Confirmación de cierre de sesión */}
+      {confirmarLogout && (
+        <ConfirmDialog
+          titulo="¿Cerrar sesión?"
+          mensaje="¿Estás seguro de que deseas salir del sistema? Tendrás que iniciar sesión con tu correo y clave nuevamente."
+          textoConfirmar="Sí, cerrar sesión"
+          textoCancelar="Continuar en la app"
+          tipoBoton="btn-peligro"
+          tipoIcono="advertencia"
+          onConfirmar={cerrarSesion}
+          onCancelar={() => setConfirmarLogout(false)}
         />
       )}
     </div>

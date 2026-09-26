@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, UsersRound, UserPlus, Clock, ChevronLeft, ChevronRight, Rows3, Phone, MessageCircle, X, ArrowLeft } from 'lucide-react';
+import { Search, Plus, UsersRound, UserPlus, Clock, ChevronLeft, ChevronRight, Rows3, Phone, MessageCircle, X, ArrowLeft, Loader2 } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
@@ -18,10 +18,12 @@ export default function Clientes() {
   const navigate = useNavigate();
   const { mostrarError, mostrarExito } = useToast();
   const [clientes, setClientes] = useState([]);
+  const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState('');
   const [tabActivo, setTabActivo] = useState('todos'); // 'todos' | 'deuda' | 'al-dia' | 'mora'
   const [pagina, setPagina] = useState(1);
   const [mostrarModal, setMostrarModal] = useState(false);
+  const [guardandoNuevo, setGuardandoNuevo] = useState(false);
   const [nombreNuevo, setNombreNuevo] = useState('');
   const [telefonoNuevo, setTelefonoNuevo] = useState('');
   const [limiteNuevo, setLimiteNuevo] = useState('');
@@ -40,6 +42,8 @@ export default function Clientes() {
       setClientes(await api.listarClientes());
     } catch (e) {
       mostrarError(e.message);
+    } finally {
+      setCargando(false);
     }
   }
 
@@ -49,7 +53,8 @@ export default function Clientes() {
   async function crearCliente(evento) {
     evento.preventDefault();
     const nombre = nombreNuevo.trim();
-    if (!nombre) return;
+    if (!nombre || guardandoNuevo) return;
+    setGuardandoNuevo(true);
     try {
       await api.crearCliente(nombre, telefonoNuevo.trim(), Number(limiteNuevo) || 0);
       setNombreNuevo('');
@@ -60,6 +65,8 @@ export default function Clientes() {
       cargar();
     } catch (e) {
       mostrarError(e.message);
+    } finally {
+      setGuardandoNuevo(false);
     }
   }
 
@@ -159,7 +166,25 @@ export default function Clientes() {
         </button>
       </div>
 
-      {filtrados.length > 0 ? (
+      {cargando ? (
+        <section className="panel">
+          <div className="panel-cabecera">
+            <div className="skeleton" style={{ width: 140, height: 16 }} />
+          </div>
+          <div className="panel-cuerpo" style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 18 }}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className="skeleton" style={{ width: 38, height: 38, borderRadius: '999px', flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div className="skeleton" style={{ width: '45%', height: 14 }} />
+                  <div className="skeleton" style={{ width: '28%', height: 11 }} />
+                </div>
+                <div className="skeleton" style={{ width: 75, height: 22, borderRadius: 6 }} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : filtrados.length > 0 ? (
         <section className="panel">
           <div className="panel-cabecera" style={{ justifyContent: 'space-between' }}>
             <span style={{ fontSize: 13, color: 'var(--texto-suave)' }}>
@@ -323,8 +348,23 @@ export default function Clientes() {
               <span className="campo-ayuda">Puedes dejarlo vacío o definir un cupo para alertarte si lo excede.</span>
             </div>
             <div className="dialogo-acciones" style={{ marginTop: 8 }}>
-              <button type="button" onClick={() => setMostrarModal(false)}>Cancelar</button>
-              <button type="submit">Guardar Cliente</button>
+              <button type="button" onClick={() => setMostrarModal(false)} disabled={guardandoNuevo}>
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn-primario btn-con-carga"
+                disabled={guardandoNuevo || !nombreNuevo.trim()}
+              >
+                {guardandoNuevo ? (
+                  <>
+                    <Loader2 size={16} className="icono-girando" strokeWidth={2.5} />
+                    <span>Guardando cliente...</span>
+                  </>
+                ) : (
+                  <span>Guardar Cliente</span>
+                )}
+              </button>
             </div>
           </form>
         </div>

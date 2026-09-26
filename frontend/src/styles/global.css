@@ -666,6 +666,20 @@ a { color: inherit; }
 }
 .dialogo-icono.rojo { background: var(--rojo-suave); color: var(--rojo); }
 .dialogo-icono.verde { background: var(--verde-suave); color: var(--verde); }
+.dialogo-icono.amarillo { background: #fef3c7; color: #b45309; }
+.dialogo-icono.azul { background: #dbeafe; color: #1d4ed8; }
+.btn-advertencia {
+  background: #f59e0b;
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  border-radius: var(--radio-sm);
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-advertencia:hover { background: #d97706; }
+.btn-advertencia:active { transform: scale(0.98); }
 .dialogo-mensaje { color: var(--texto-suave); font-size: 14px; margin: 0; line-height: 1.5; }
 .dialogo-confirmar { align-items: center; text-align: center; }
 .dialogo-confirmar .dialogo-icono { width: 48px; height: 48px; }
@@ -2063,5 +2077,267 @@ a { color: inherit; }
     justify-content: center;
   }
 }
+
+/* ============================================================
+   BANNER DE ESTADO SERVIDOR RENDER (COLD-START AVISO)
+   ============================================================ */
+.banner-render {
+  position: sticky;
+  top: 54px;
+  z-index: 99;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transition: all 0.3s ease;
+  animation: deslizarAbajo 0.25s ease-out;
+}
+
+@keyframes deslizarAbajo {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.banner-render.despertando {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
+  border-bottom: 2px solid #3b82f6;
+}
+
+.banner-render.despertando .icono-girando {
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+.banner-render.conectado {
+  background: #064e3b;
+  color: #ecfdf5;
+  border-bottom: 2px solid #10b981;
+}
+
+.banner-render.conectado svg {
+  color: #34d399;
+  flex-shrink: 0;
+}
+
+.banner-render-contenido {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.banner-render-texto {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.banner-render-texto strong {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.banner-render-texto span {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.banner-render-cerrar {
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: 0.7;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.banner-render-cerrar:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================================
+   PANTALLA DE CARGA INICIAL (SPLASH SCREEN PREMIUM)
+   ============================================================ */
+.pantalla-carga-inicial {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--fondo);
+  padding: 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.splash-tarjeta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 320px;
+  width: 100%;
+  animation: fadeUp 0.4s ease-out;
+}
+
+.splash-logo-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--acento) 0%, #1e40af 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4);
+  position: relative;
+}
+
+.splash-logo-wrap::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 24px;
+  border: 2px solid rgba(37, 99, 235, 0.3);
+  animation: pulsoAura 2s infinite ease-in-out;
+}
+
+@keyframes pulsoAura {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.9;
+  }
+}
+
+.splash-titulo {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--texto);
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.splash-subtitulo {
+  font-size: 13px;
+  color: var(--texto-suave);
+  margin: -8px 0 0;
+}
+
+.splash-loader-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--acento);
+  background: var(--acento-suave);
+  padding: 8px 18px;
+  border-radius: 999px;
+  margin-top: 8px;
+}
+
+.splash-aviso-render {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--texto-suave);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 10px 14px;
+  line-height: 1.4;
+  max-width: 290px;
+}
+
+/* ============================================================
+   BOTONES CON ESTADO DE CARGA Y FEEDBACK TÁCTIL
+   ============================================================ */
+.btn-con-carga {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn-con-carga:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  filter: grayscale(10%);
+}
+
+/* Feedback táctil instantáneo en todos los botones para que nunca parezca congelado */
+button:not(:disabled):active,
+.btn-primario:not(:disabled):active,
+.btn-secundario:not(:disabled):active,
+.btn-confirmar-fiar:not(:disabled):active {
+  transform: scale(0.975);
+}
+
+/* ============================================================
+   ESTILOS MEJORADOS PARA COMPROBANTE Y WHATSAPP DIRECTO
+   ============================================================ */
+.btn-whatsapp-directo-cliente {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #25d366;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.28);
+  transition: all 0.15s ease;
+}
+
+.btn-whatsapp-directo-cliente:hover {
+  background: #1eb956;
+}
+
+.btn-whatsapp-directo-cliente:active {
+  transform: scale(0.98);
+}
+
+.tique-aviso-telefono {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
 
 

@@ -4,9 +4,26 @@ import { Share } from '@capacitor/share';
 import { toPng } from 'html-to-image';
 
 /**
+ * Abre directamente el chat de WhatsApp con el número del cliente
+ * llevando el mensaje pre-cargado (con los datos del cobro y número Nequi/Bre-B).
+ */
+export function abrirChatWhatsAppDirecto(telefonoCliente, textoMensaje = '') {
+  const telLimpio = (telefonoCliente || '').replace(/\D/g, '');
+  if (!telLimpio) return false;
+
+  const numFinal = telLimpio.startsWith('57') ? telLimpio : `57${telLimpio}`;
+  const url = `https://wa.me/${numFinal}?text=${encodeURIComponent(textoMensaje)}`;
+
+  if (typeof window !== 'undefined') {
+    window.open(url, '_blank');
+  }
+  return true;
+}
+
+/**
  * Genera una imagen PNG a partir de un nodo HTML del ticket térmico
  * y la comparte a través de WhatsApp / Share sheet con el mensaje de texto
- * (incluyendo el número de Nequi / Bre-B) como pie de foto.
+ * (incluyendo el número de Nequi / Bre-B) como pie de foto de la imagen.
  */
 export async function compartirFacturaConImagen({
   nodoElemento,
@@ -68,12 +85,12 @@ export async function compartirFacturaConImagen({
   enlace.click();
   enlace.remove();
 
-  const telLimpio = (telefonoCliente || '').replace(/\D/g, '');
-  const urlWhatsApp = telLimpio
-    ? `https://wa.me/${telLimpio.startsWith('57') ? telLimpio : `57${telLimpio}`}?text=${encodeURIComponent(textoMensaje)}`
-    : `https://wa.me/?text=${encodeURIComponent(textoMensaje)}`;
+  if (telefonoCliente) {
+    abrirChatWhatsAppDirecto(telefonoCliente, textoMensaje);
+  } else {
+    window.open(`https://wa.me/?text=${encodeURIComponent(textoMensaje)}`, '_blank');
+  }
 
-  window.open(urlWhatsApp, '_blank');
   return { exito: true, metodo: 'descarga-fallback' };
 }
 

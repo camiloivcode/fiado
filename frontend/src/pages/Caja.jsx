@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, Inbox, Pencil, Trash2, Calculator, TrendingUp, Award, PiggyBank, RotateCcw, Check, Sparkles, X, ArrowLeft } from 'lucide-react';
+import { Wallet, Inbox, Pencil, Trash2, Calculator, TrendingUp, Award, PiggyBank, RotateCcw, Check, Sparkles, X, ArrowLeft, Loader2 } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
@@ -24,11 +24,15 @@ export default function Caja() {
   const navigate = useNavigate();
   const { mostrarError, mostrarExito } = useToast();
   const [historial, setHistorial] = useState([]);
+  const [cargando, setCargando] = useState(true);
   const [monto, setMonto] = useState('');
   const [nota, setNota] = useState('');
   const [mostrarCalculadora, setMostrarCalculadora] = useState(false);
   const [cantidades, setCantidades] = useState({});
   const [guardando, setGuardando] = useState(false);
+  const [confirmarCierre, setConfirmarCierre] = useState(false);
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  const [guardandoBorrado, setGuardandoBorrado] = useState(false);
 
   const [cajaAEditar, setCajaAEditar] = useState(null);
   const [montoEditado, setMontoEditado] = useState('');
@@ -40,6 +44,8 @@ export default function Caja() {
       setHistorial(await api.listarCaja());
     } catch (e) {
       mostrarError(e.message);
+    } finally {
+      setCargando(false);
     }
   }
 
@@ -85,11 +91,21 @@ export default function Caja() {
     }
   }
 
-  async function guardar(evento) {
+  function handleIntentarGuardar(evento) {
     evento.preventDefault();
+    if (guardando) return;
     const valorNum = Number(monto);
-    if (!valorNum && valorNum !== 0) return;
+    if (!valorNum && valorNum !== 0) {
+      return mostrarError('Por favor ingresa un monto válido');
+    }
+    setConfirmarCierre(true);
+  }
+
+  async function ejecutarCierre() {
+    if (guardando) return;
+    const valorNum = Number(monto);
     setGuardando(true);
+    setConfirmarCierre(false);
     try {
       await api.cerrarCaja(valorNum, nota);
       setMonto('');
@@ -112,6 +128,8 @@ export default function Caja() {
 
   async function guardarEdicion(evento) {
     evento.preventDefault();
+    if (guardandoEdicion) return;
+    setGuardandoEdicion(true);
     try {
       await api.editarCaja(cajaAEditar.id, Number(montoEditado), notaEditada);
       setCajaAEditar(null);
@@ -119,10 +137,14 @@ export default function Caja() {
       cargar();
     } catch (e) {
       mostrarError(e.message);
+    } finally {
+      setGuardandoEdicion(false);
     }
   }
 
   async function confirmarBorrarCaja() {
+    if (guardandoBorrado) return;
+    setGuardandoBorrado(true);
     try {
       await api.eliminarCaja(cajaABorrar);
       setCajaABorrar(null);
@@ -130,6 +152,8 @@ export default function Caja() {
       cargar();
     } catch (e) {
       mostrarError(e.message);
+    } finally {
+      setGuardandoBorrado(false);
     }
   }
 
@@ -287,7 +311,7 @@ export default function Caja() {
             </div>
           )}
 
-          <form className="form-caja" onSubmit={guardar}>
+          <form className="form-caja" onSubmit={handleIntentarGuardar}>
             <div className="campo">
               <label htmlFor="monto-caja">
                 Plata física en gaveta hoy ($ COP)
@@ -310,9 +334,18 @@ export default function Caja() {
                 onChange={(e) => setNota(e.target.value)}
               />
             </div>
-            <button type="submit" className="btn-primario" disabled={guardando}>
-              <Wallet size={16} strokeWidth={2} aria-hidden="true" />
-              {guardando ? 'Guardando...' : 'Guardar cierre del día'}
+            <button type="submit" className="btn-primario btn-con-carga" disabled={guardando}>
+              {guardando ? (
+                <>
+                  <Loader2 size={16} className="icono-girando" strokeWidth={2.5} />
+                  <span>Guardando cierre...</span>
+                </>
+              ) : (
+                <>
+                  <Wallet size={16} strokeWidth={2} aria-hidden="true" />
+                  <span>Guardar cierre del día</span>
+                </>
+              )}
             </button>
           </form>
         </div>
@@ -324,49 +357,61 @@ export default function Caja() {
           <h3 className="panel-titulo">Historial de cierres de caja</h3>
         </div>
         <div className="panel-cuerpo sin-relleno">
-          <ul className="historial-caja" style={{ padding: '0 18px' }}>
-            {historial.map((c) => (
-              <li key={c.id}>
-                <span className="fecha">
-                  {new Date(c.fecha).toLocaleDateString('es-CO', {
-                    day: '2-digit', month: 'short', year: 'numeric',
-                  })}
-                </span>
-                <span className="monto">{formatearPesos(c.monto)}</span>
-                <span className="nota">{c.nota || '—'}</span>
-                <span className="fila-mov-acciones">
-                  <button
-                    className="btn-editar-nombre"
-                    onClick={() => abrirEdicion(c)}
-                    aria-label="Editar cierre"
-                    title="Editar cierre"
-                  >
-                    <Pencil size={15} strokeWidth={1.75} />
-                  </button>
-                  <button
-                    className="btn-borrar"
-                    onClick={() => setCajaABorrar(c.id)}
-                    aria-label="Eliminar cierre"
-                    title="Eliminar cierre"
-                  >
-                    <Trash2 size={16} strokeWidth={1.75} />
-                  </button>
-                </span>
-              </li>
-            ))}
-            {!historial.length && (
-              <li className="vacio">
-                <Inbox className="icono" size={28} strokeWidth={1.5} aria-hidden="true" />
-                Sin cierres todavía. Registre el primero arriba.
-              </li>
-            )}
-          </ul>
+          {cargando ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 18px' }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div className="skeleton" style={{ width: 90, height: 14 }} />
+                  <div className="skeleton" style={{ width: 110, height: 16 }} />
+                  <div className="skeleton" style={{ width: 120, height: 12 }} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ul className="historial-caja" style={{ padding: '0 18px' }}>
+              {historial.map((c) => (
+                <li key={c.id}>
+                  <span className="fecha">
+                    {new Date(c.fecha).toLocaleDateString('es-CO', {
+                      day: '2-digit', month: 'short', year: 'numeric',
+                    })}
+                  </span>
+                  <span className="monto">{formatearPesos(c.monto)}</span>
+                  <span className="nota">{c.nota || '—'}</span>
+                  <span className="fila-mov-acciones">
+                    <button
+                      className="btn-editar-nombre"
+                      onClick={() => abrirEdicion(c)}
+                      aria-label="Editar cierre"
+                      title="Editar cierre"
+                    >
+                      <Pencil size={15} strokeWidth={1.75} />
+                    </button>
+                    <button
+                      className="btn-borrar"
+                      onClick={() => setCajaABorrar(c.id)}
+                      aria-label="Eliminar cierre"
+                      title="Eliminar cierre"
+                    >
+                      <Trash2 size={16} strokeWidth={1.75} />
+                    </button>
+                  </span>
+                </li>
+              ))}
+              {!historial.length && (
+                <li className="vacio">
+                  <Inbox className="icono" size={28} strokeWidth={1.5} aria-hidden="true" />
+                  Sin cierres todavía. Registre el primero arriba.
+                </li>
+              )}
+            </ul>
+          )}
         </div>
       </section>
 
       {/* Modal de Edición de Cierre */}
       {cajaAEditar && (
-        <div className="overlay" onClick={(e) => e.target === e.currentTarget && setCajaAEditar(null)}>
+        <div className="overlay" onClick={(e) => !guardandoEdicion && e.target === e.currentTarget && setCajaAEditar(null)}>
           <form className="dialogo" onSubmit={guardarEdicion}>
             <div className="dialogo-cabecera">
               <span className="dialogo-icono" aria-hidden="true">
@@ -377,6 +422,7 @@ export default function Caja() {
                 type="button"
                 className="btn-cerrar-modal"
                 onClick={() => setCajaAEditar(null)}
+                disabled={guardandoEdicion}
                 aria-label="Cerrar modal"
               >
                 <X size={18} strokeWidth={2} />
@@ -397,11 +443,35 @@ export default function Caja() {
               style={{ textAlign: 'left', fontSize: 15 }}
             />
             <div className="dialogo-acciones">
-              <button type="button" onClick={() => setCajaAEditar(null)}>Cancelar</button>
-              <button type="submit">Guardar</button>
+              <button type="button" onClick={() => setCajaAEditar(null)} disabled={guardandoEdicion}>Cancelar</button>
+              <button type="submit" className="btn-primario btn-con-carga" disabled={guardandoEdicion}>
+                {guardandoEdicion ? (
+                  <>
+                    <Loader2 size={16} className="icono-girando" strokeWidth={2.5} />
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  <span>Guardar</span>
+                )}
+              </button>
             </div>
           </form>
         </div>
+      )}
+
+      {/* Diálogo de Confirmación para Cierre de Caja */}
+      {confirmarCierre && (
+        <ConfirmDialog
+          titulo="¿Confirmar cierre de caja?"
+          mensaje={`¿Confirmas el arqueo de caja por valor de ${formatearPesos(Number(monto))} COP? Esta acción registrará el cierre en el historial del día.`}
+          textoConfirmar="Sí, guardar cierre"
+          textoCancelar="Revisar monto"
+          tipoBoton="btn-primario"
+          tipoIcono="info"
+          cargando={guardando}
+          onConfirmar={ejecutarCierre}
+          onCancelar={() => setConfirmarCierre(false)}
+        />
       )}
 
       {/* Diálogo de Confirmación para Borrar Cierre */}
@@ -410,6 +480,7 @@ export default function Caja() {
           titulo="Eliminar cierre de caja"
           mensaje="Esta acción eliminará el registro de caja de este turno. ¿Desea continuar?"
           textoConfirmar="Eliminar"
+          cargando={guardandoBorrado}
           onConfirmar={confirmarBorrarCaja}
           onCancelar={() => setCajaABorrar(null)}
         />

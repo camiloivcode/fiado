@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Search, Check, AlertTriangle, ShoppingBag, Sparkles, UserPlus } from 'lucide-react';
+import { Plus, X, Search, Check, AlertTriangle, ShoppingBag, Sparkles, UserPlus, Loader2 } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from './Toast.jsx';
 import MontoInput from './MontoInput.jsx';
+import ConfirmDialog from './ConfirmDialog.jsx';
 
 const PRODUCTOS_SUGERIDOS = [
   '2 Leches',
@@ -28,6 +29,8 @@ export default function ModalFiarRapido({ onClose, onGuardado, clientePreselecci
   const [descripcion, setDescripcion] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [creandoNuevo, setCreandoNuevo] = useState(false);
+  const [guardandoNuevoCliente, setGuardandoNuevoCliente] = useState(false);
+  const [confirmarExcesoCupo, setConfirmarExcesoCupo] = useState(false);
   const [nombreNuevo, setNombreNuevo] = useState('');
   const [telefonoNuevo, setTelefonoNuevo] = useState('');
 
@@ -69,7 +72,8 @@ export default function ModalFiarRapido({ onClose, onGuardado, clientePreselecci
 
   async function crearClienteRapido(e) {
     e.preventDefault();
-    if (!nombreNuevo.trim()) return;
+    if (!nombreNuevo.trim() || guardandoNuevoCliente) return;
+    setGuardandoNuevoCliente(true);
     try {
       const creado = await api.crearCliente(nombreNuevo.trim(), telefonoNuevo.trim());
       setClientes((prev) => [...prev, creado]);
@@ -80,20 +84,41 @@ export default function ModalFiarRapido({ onClose, onGuardado, clientePreselecci
       mostrarExito('Cliente creado');
     } catch (err) {
       mostrarError(err.message);
+    } finally {
+      setGuardandoNuevoCliente(false);
     }
   }
 
-  async function guardarFiado(e) {
+  // Comprobación de límite de crédito
+  const montoNum = Number(monto) || 0;
+  const saldoActual = clienteSeleccionado ? clienteSeleccionado.saldo : 0;
+  const nuevoSaldo = saldoActual + montoNum;
+  const limite = clienteSeleccionado ? clienteSeleccionado.limiteCredito : 0;
+  const excedeCupo = limite > 0 && nuevoSaldo > limite;
+
+  function handleIntentarGuardarFiado(e) {
     e.preventDefault();
+    if (guardando) return;
     if (!clienteSeleccionado) {
       return mostrarError('Por favor selecciona a qué cliente fiar');
     }
-    const montoNum = Number(monto);
     if (!montoNum || montoNum <= 0) {
       return mostrarError('Ingresa un monto válido mayor a cero');
     }
 
+    // Si excede el cupo, pedir confirmación antes de guardar
+    if (excedeCupo) {
+      setConfirmarExcesoCupo(true);
+      return;
+    }
+
+    ejecutarGuardado();
+  }
+
+  async function ejecutarGuardado() {
+    if (guardando) return;
     setGuardando(true);
+    setConfirmarExcesoCupo(false);
     try {
       const mov = await api.crearMovimiento(
         clienteSeleccionado.id,
@@ -110,13 +135,6 @@ export default function ModalFiarRapido({ onClose, onGuardado, clientePreselecci
       setGuardando(false);
     }
   }
-
-  // Comprobación de límite de crédito
-  const montoNum = Number(monto) || 0;
-  const saldoActual = clienteSeleccionado ? clienteSeleccionado.saldo : 0;
-  const nuevoSaldo = saldoActual + montoNum;
-  const limite = clienteSeleccionado ? clienteSeleccionado.limiteCredito : 0;
-  const excedeCupo = limite > 0 && nuevoSaldo > limite;
 
   return (
     <div className="overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -136,7 +154,7 @@ export default function ModalFiarRapido({ onClose, onGuardado, clientePreselecci
           </button>
         </div>
 
-        <form onSubmit={guardarFiado} className="modal-fiar-cuerpo">
+        <form onSubmit={handleIntentarGuardarFiado} className="modal-fiar-cuerpo">
           {/* 1. Selección de Cliente */}
           {!clienteSeleccionado ? (
             <div className="fiar-seccion-cliente">
@@ -168,8 +186,20 @@ export default function ModalFiarRapido({ onClose, onGuardado, clientePreselecci
                     value={telefonoNuevo}
                     onChange={(e) => setTelefonoNuevo(e.target.value)}
                   />
-                  <button type="button" className="btn-primario" onClick={crearClienteRapido}>
-                    Guardar y seleccionar
+                  <button
+                    type="button"
+                    className="btn-primario btn-con-carga"
+                    onClick={crearClienteRapido}
+                    disabled={guardandoNuevoCliente || !nombreNuevo.trim()}
+                  >
+                    {guardandoNuevoCliente ? (
+                      <>
+                        <Loader2 size={14} className="icono-girando" strokeWidth={2.5} />
+                        <span>Creando...</span>
+                      </>
+                    ) : (
+                      <span>Guardar y seleccionar</span>
+                    )}
                   </button>
                 </div>
               ) : (
@@ -311,15 +341,39 @@ export default function ModalFiarRapido({ onClose, onGuardado, clientePreselecci
           <div className="modal-fiar-acciones">
             <button
               type="submit"
-              className="btn-primario btn-confirmar-fiar"
+              className="btn-primario btn-confirmar-fiar btn-con-carga"
               disabled={guardando || !clienteSeleccionado || montoNum <= 0}
             >
-              <Check size={18} strokeWidth={2.5} />
-              {guardando ? 'Guardando...' : `Confirmar Fiado: ${formatearPesos(montoNum)}`}
+              {guardando ? (
+                <>
+                  <Loader2 size={18} className="icono-girando" strokeWidth={2.5} />
+                  <span>Registrando fiado... por favor espera</span>
+                </>
+              ) : (
+                <>
+                  <Check size={18} strokeWidth={2.5} />
+                  <span>Confirmar Fiado: {montoNum > 0 ? formatearPesos(montoNum) : '$0'}</span>
+                </>
+              )}
             </button>
           </div>
         </form>
       </div>
+
+      {/* Alerta de confirmación si excede cupo */}
+      {confirmarExcesoCupo && clienteSeleccionado && (
+        <ConfirmDialog
+          titulo="¿Aprobar fiado que excede cupo?"
+          mensaje={`El cliente ${clienteSeleccionado.nombre} tiene un cupo fijado de ${formatearPesos(limite)}. Con este nuevo fiado de ${formatearPesos(montoNum)}, su deuda total ascenderá a ${formatearPesos(nuevoSaldo)}, sobrepasando el límite por ${formatearPesos(nuevoSaldo - limite)}. ¿Deseas aprobar y registrar este fiado de todas formas?`}
+          textoConfirmar="Sí, autorizar y fiar"
+          textoCancelar="Volver y revisar"
+          tipoBoton="btn-advertencia"
+          tipoIcono="advertencia"
+          cargando={guardando}
+          onConfirmar={ejecutarGuardado}
+          onCancelar={() => setConfirmarExcesoCupo(false)}
+        />
+      )}
     </div>
   );
 }

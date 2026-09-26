@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Trash2, UserRoundX, Pencil, Phone, MessageCircle, Share2, Receipt, ShieldCheck, ShoppingBag, Clock, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Trash2, UserRoundX, Pencil, Phone, MessageCircle, Share2, Receipt, ShieldCheck, ShoppingBag, Clock, X, Loader2 } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
@@ -39,6 +39,10 @@ export default function Cliente() {
   const [limiteEditado, setLimiteEditado] = useState('');
   const [movABorrar, setMovABorrar] = useState(null);
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
+  const [confirmarExcesoCupo, setConfirmarExcesoCupo] = useState(false);
+  const [guardandoMovimiento, setGuardandoMovimiento] = useState(false);
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  const [guardandoBorrado, setGuardandoBorrado] = useState(false);
   const [comprobanteParaMostrar, setComprobanteParaMostrar] = useState(null);
   const [mostrarFacturaTotal, setMostrarFacturaTotal] = useState(false);
 
@@ -71,11 +75,28 @@ export default function Cliente() {
     });
   }
 
-  async function guardarMovimiento(evento) {
+  function handleIntentarGuardarMovimiento(evento) {
     evento.preventDefault();
+    if (guardandoMovimiento) return;
     const montoNum = Number(monto);
     if (!montoNum || montoNum <= 0) return mostrarError('Ingresa un monto válido');
 
+    // Si es fiado y excede cupo, pedir confirmación
+    const saldoActual = cliente?.saldo || 0;
+    const limite = cliente?.limiteCredito || 0;
+    if (dialogo === 'fiado' && limite > 0 && (saldoActual + montoNum) > limite) {
+      setConfirmarExcesoCupo(true);
+      return;
+    }
+
+    ejecutarGuardarMovimiento();
+  }
+
+  async function ejecutarGuardarMovimiento() {
+    if (guardandoMovimiento) return;
+    const montoNum = Number(monto);
+    setGuardandoMovimiento(true);
+    setConfirmarExcesoCupo(false);
     try {
       const mov = await api.crearMovimiento(id, dialogo, montoNum, descripcion.trim());
       const nuevoSaldo = (cliente.saldo || 0) + (dialogo === 'fiado' ? montoNum : -montoNum);
@@ -91,13 +112,17 @@ export default function Cliente() {
       cargar();
     } catch (e) {
       mostrarError(e.message);
+    } finally {
+      setGuardandoMovimiento(false);
     }
   }
 
   async function guardarEdicion(evento) {
     evento.preventDefault();
+    if (guardandoEdicion) return;
     const nombre = nombreEditado.trim();
     if (!nombre) return;
+    setGuardandoEdicion(true);
     try {
       await api.editarCliente(id, nombre, telefonoEditado.trim(), Number(limiteEditado) || 0);
       setDialogo(null);
@@ -105,10 +130,14 @@ export default function Cliente() {
       cargar();
     } catch (e) {
       mostrarError(e.message);
+    } finally {
+      setGuardandoEdicion(false);
     }
   }
 
   async function confirmarBorrarMovimiento() {
+    if (guardandoBorrado) return;
+    setGuardandoBorrado(true);
     try {
       await api.eliminarMovimiento(movABorrar);
       setMovABorrar(null);
@@ -116,16 +145,22 @@ export default function Cliente() {
       cargar();
     } catch (e) {
       mostrarError(e.message);
+    } finally {
+      setGuardandoBorrado(false);
     }
   }
 
   async function confirmarEliminarCliente() {
+    if (guardandoBorrado) return;
+    setGuardandoBorrado(true);
     try {
       await api.eliminarCliente(id);
       mostrarExito('Cliente eliminado');
       navigate('/clientes');
     } catch (e) {
       mostrarError(e.message);
+    } finally {
+      setGuardandoBorrado(false);
     }
   }
 
@@ -457,8 +492,21 @@ export default function Cliente() {
               <span className="campo-ayuda">El sistema te avisará si el cliente supera este límite.</span>
             </div>
             <div className="dialogo-acciones">
-              <button type="button" onClick={() => setDialogo(null)}>Cancelar</button>
-              <button type="submit">Guardar cambios</button>
+              <button type="button" onClick={() => setDialogo(null)} disabled={guardandoEdicion}>Cancelar</button>
+              <button
+                type="submit"
+                className="btn-primario btn-con-carga"
+                disabled={guardandoEdicion || !nombreEditado.trim()}
+              >
+                {guardandoEdicion ? (
+                  <>
+                    <Loader2 size={16} className="icono-girando" strokeWidth={2.5} />
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  <span>Guardar cambios</span>
+                )}
+              </button>
             </div>
           </form>
         </div>
@@ -466,8 +514,8 @@ export default function Cliente() {
 
       {/* Diálogo Fiar o Abonar */}
       {(dialogo === 'fiado' || dialogo === 'abono') && (
-        <div className="overlay" onClick={(e) => e.target === e.currentTarget && setDialogo(null)}>
-          <form className="dialogo" onSubmit={guardarMovimiento}>
+        <div className="overlay" onClick={(e) => !guardandoMovimiento && e.target === e.currentTarget && setDialogo(null)}>
+          <form className="dialogo" onSubmit={handleIntentarGuardarMovimiento}>
             <div className="dialogo-cabecera">
               <span className={`dialogo-icono ${dialogo === 'fiado' ? 'rojo' : 'verde'}`} aria-hidden="true">
                 {dialogo === 'fiado'
@@ -482,6 +530,7 @@ export default function Cliente() {
                 type="button"
                 className="btn-cerrar-modal"
                 onClick={() => setDialogo(null)}
+                disabled={guardandoMovimiento}
                 aria-label="Cerrar modal"
               >
                 <X size={18} strokeWidth={2} />
@@ -554,9 +603,20 @@ export default function Cliente() {
             )}
 
             <div className="dialogo-acciones" style={{ marginTop: 16 }}>
-              <button type="button" onClick={() => setDialogo(null)}>Cancelar</button>
-              <button type="submit">
-                {dialogo === 'fiado' ? 'Guardar Fiado' : 'Guardar Abono'}
+              <button type="button" onClick={() => setDialogo(null)} disabled={guardandoMovimiento}>Cancelar</button>
+              <button
+                type="submit"
+                className="btn-primario btn-con-carga"
+                disabled={guardandoMovimiento || !Number(monto) || Number(monto) <= 0}
+              >
+                {guardandoMovimiento ? (
+                  <>
+                    <Loader2 size={16} className="icono-girando" strokeWidth={2.5} />
+                    <span>{dialogo === 'fiado' ? 'Guardando fiado...' : 'Guardando abono...'}</span>
+                  </>
+                ) : (
+                  <span>{dialogo === 'fiado' ? 'Guardar Fiado' : 'Guardar Abono'}</span>
+                )}
               </button>
             </div>
           </form>
@@ -583,11 +643,27 @@ export default function Cliente() {
         />
       )}
 
+      {/* Alerta si el fiado excede el cupo de crédito */}
+      {confirmarExcesoCupo && (
+        <ConfirmDialog
+          titulo="¿Aprobar fiado que excede cupo?"
+          mensaje={`El cliente ${cliente.nombre} tiene un cupo fijado de ${formatearPesos(cliente.limiteCredito)}. Con este nuevo fiado de ${formatearPesos(Number(monto))}, su saldo total será de ${formatearPesos(saldo + Number(monto))}, superando el límite por ${formatearPesos(saldo + Number(monto) - cliente.limiteCredito)}. ¿Deseas aprobar y guardar este fiado?`}
+          textoConfirmar="Sí, autorizar y fiar"
+          textoCancelar="Volver y revisar"
+          tipoBoton="btn-advertencia"
+          tipoIcono="advertencia"
+          cargando={guardandoMovimiento}
+          onConfirmar={ejecutarGuardarMovimiento}
+          onCancelar={() => setConfirmarExcesoCupo(false)}
+        />
+      )}
+
       {movABorrar && (
         <ConfirmDialog
           titulo="Eliminar movimiento"
           mensaje="Esta acción recalculará el saldo del cliente de inmediato. ¿Deseas continuar?"
           textoConfirmar="Eliminar"
+          cargando={guardandoBorrado}
           onConfirmar={confirmarBorrarMovimiento}
           onCancelar={() => setMovABorrar(null)}
         />
@@ -598,6 +674,7 @@ export default function Cliente() {
           titulo={`Eliminar a ${cliente.nombre}`}
           mensaje="Se borrará todo su historial de fiados y abonos. Esta acción no se puede deshacer."
           textoConfirmar="Eliminar cliente"
+          cargando={guardandoBorrado}
           onConfirmar={confirmarEliminarCliente}
           onCancelar={() => setConfirmarEliminar(false)}
         />
