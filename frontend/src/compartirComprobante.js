@@ -1,29 +1,56 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { toPng } from 'html-to-image';
+
+const WhatsAppDirect = registerPlugin('WhatsAppDirect');
 
 /**
  * Abre directamente el chat de WhatsApp con el número del cliente
  * llevando el mensaje pre-cargado (con los datos del cobro y número Nequi/Bre-B).
  */
-export function abrirChatWhatsAppDirecto(telefonoCliente, textoMensaje = '') {
+export async function abrirChatWhatsAppDirecto(telefonoCliente, textoMensaje = '', rutaArchivo = '') {
   const telLimpio = (telefonoCliente || '').replace(/\D/g, '');
   if (!telLimpio) return false;
 
   const numFinal = telLimpio.startsWith('57') ? telLimpio : `57${telLimpio}`;
-  const url = `https://wa.me/${numFinal}?text=${encodeURIComponent(textoMensaje)}`;
 
-  if (typeof window !== 'undefined') {
-    window.open(url, '_blank');
+  // 1. Si estamos en Android nativo (Capacitor), usar el plugin nativo WhatsAppDirect
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await WhatsAppDirect.abrirChat({
+        telefono: numFinal,
+        texto: textoMensaje,
+        rutaArchivo: rutaArchivo || '',
+      });
+      return true;
+    } catch (err) {
+      console.warn('Fallo WhatsAppDirect nativo, intentando intent URL directa:', err);
+      // Fallback intentando abrir la URL directa api.whatsapp.com
+      const url = `https://api.whatsapp.com/send?phone=${numFinal}&text=${encodeURIComponent(textoMensaje)}`;
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      return true;
+    }
+  }
+
+  // 2. Si es Navegador Web / PWA:
+  const url = `https://api.whatsapp.com/send?phone=${numFinal}&text=${encodeURIComponent(textoMensaje)}`;
+  const win = window.open(url, '_blank');
+  if (!win) {
+    window.location.href = url;
   }
   return true;
 }
 
 /**
  * Genera una imagen PNG a partir de un nodo HTML del ticket térmico
- * y la comparte a través de WhatsApp / Share sheet con el mensaje de texto
- * (incluyendo el número de Nequi / Bre-B) como pie de foto de la imagen.
+ * y la envía directamente al chat de WhatsApp de esa persona con el mensaje de texto.
  */
 export async function compartirFacturaConImagen({
   nodoElemento,
@@ -36,62 +63,61 @@ export async function compartirFacturaConImagen({
     throw new Error('No se encontró el elemento del comprobante');
   }
 
-  // 1. Generar PNG de alta definición (2.5x pixelRatio)
-  const dataUrl = await toPng(nodoElemento, {
-    pixelRatio: 2.5,
-    cacheBust: true,
-    backgroundColor: '#ffffff',
-  });
-
-  // 2. Si corre en Android nativo (Capacitor)
-  if (Capacitor.isNativePlatform()) {
-    const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
-    const archivoGuardado = await Filesystem.writeFile({
-      path: nombreArchivo,
-      data: base64Data,
-      directory: Directory.Cache,
+  // 1. Generar PNG de alta definición
+  let dataUrl = '';
+  try {
+    dataUrl = await toPng(nodoElemento, {
+      pixelRatio: 2.5,
+      cacheBust: true,
+      backgroundColor: '#ffffff',
     });
+  } catch (err) {
+    console.warn('No se pudo renderizar PNG, continuando con texto:', err);
+  }
 
+  let archivoUri = '';
+
+  // 2. Guardar imagen en caché si estamos en nativo
+  if (Capacitor.isNativePlatform() && dataUrl) {
+    try {
+      const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+      const archivoGuardado = await Filesystem.writeFile({
+        path: nombreArchivo,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+      archivoUri = archivoGuardado.uri;
+    } catch (e) {
+      console.warn('No se pudo guardar imagen en caché:', e);
+    }
+  }
+
+  // 3. Copiar texto al portapapeles por comodidad del usuario
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(textoMensaje);
+    }
+  } catch {}
+
+  // 4. Si tiene número de teléfono, ENVIAR DIRECTO AL CHAT DE ESE NÚMERO
+  if (telefonoCliente) {
+    return await abrirChatWhatsAppDirecto(telefonoCliente, textoMensaje, archivoUri);
+  }
+
+  // 5. Si no tiene teléfono y es nativo, abrir Share Sheet como último recurso
+  if (Capacitor.isNativePlatform() && archivoUri) {
     await Share.share({
       title: titulo || 'Factura Fiado',
       text: textoMensaje,
-      files: [archivoGuardado.uri],
+      files: [archivoUri],
       dialogTitle: 'Enviar por WhatsApp',
     });
-
-    return { exito: true, metodo: 'nativo' };
+    return { exito: true, metodo: 'share_nativo' };
   }
 
-  // 3. Si corre en Navegador Web que soporte compartir archivos
-  const respuesta = await fetch(dataUrl);
-  const blob = await respuesta.blob();
-  const archivo = new File([blob], nombreArchivo, { type: 'image/png' });
-
-  if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [archivo] })) {
-    await navigator.share({
-      title: titulo || 'Factura Fiado',
-      text: textoMensaje,
-      files: [archivo],
-    });
-    return { exito: true, metodo: 'web-share' };
-  }
-
-  // 4. Fallback para navegador web sin soporte de adjuntos directos:
-  // Descarga el PNG en la máquina y abre WhatsApp con el texto y el número listo
-  const enlace = document.createElement('a');
-  enlace.href = dataUrl;
-  enlace.download = nombreArchivo;
-  document.body.appendChild(enlace);
-  enlace.click();
-  enlace.remove();
-
-  if (telefonoCliente) {
-    abrirChatWhatsAppDirecto(telefonoCliente, textoMensaje);
-  } else {
-    window.open(`https://wa.me/?text=${encodeURIComponent(textoMensaje)}`, '_blank');
-  }
-
-  return { exito: true, metodo: 'descarga-fallback' };
+  // Fallback web sin teléfono especificado
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoMensaje)}`, '_blank');
+  return { exito: true, metodo: 'web_abierto' };
 }
 
 /**
