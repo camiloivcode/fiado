@@ -1621,6 +1621,168 @@ a { color: inherit; }
   color: #0f172a;
   font-variant-numeric: tabular-nums;
 }
+.tique-telefono-tienda {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+}
+.tique-tipo-badge.factura-total {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+/* Caja de Gran Total */
+.tique-caja-gran-total {
+  background: #f8fafc;
+  border: 2px dashed #94a3b8;
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: center;
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tique-gran-total-etiqueta {
+  font-size: 10px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tique-gran-total-monto {
+  font-size: 26px;
+  font-weight: 900;
+  color: #dc2626;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.tique-gran-total-sub {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* Desglose de fiados */
+.tique-desglose-seccion {
+  margin: 6px 0;
+  padding: 8px 0;
+  border-top: 1px dashed #cbd5e1;
+}
+.tique-desglose-titulo {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tique-desglose-items {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tique-desglose-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  padding: 2px 0;
+  border-bottom: 1px dotted #e2e8f0;
+}
+.tique-desglose-item-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 70%;
+}
+.tique-desglose-item-fecha {
+  color: #64748b;
+  font-weight: 600;
+  font-size: 10.5px;
+}
+.tique-desglose-item-desc {
+  color: #1e293b;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tique-desglose-item-monto {
+  font-weight: 700;
+  color: #dc2626;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Caja Destacada de Pago Nequi / Bre-B */
+.tique-caja-pago {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tique-pago-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tique-pago-titulo {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #15803d;
+  letter-spacing: 0.05em;
+}
+.tique-pago-alerta {
+  font-size: 10px;
+  font-weight: 700;
+  color: #b91c1c;
+  background: #fee2e2;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.tique-pago-numero-box {
+  background: #ffffff;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.tique-pago-etiqueta {
+  font-size: 11px;
+  color: #475569;
+}
+.tique-pago-numero {
+  font-size: 16px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 0.08em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.tique-pago-indicacion {
+  font-size: 9.5px;
+  color: #166534;
+  font-weight: 600;
+}
+.tique-pie-agradecimiento {
+  text-align: center;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 12px;
+  font-style: italic;
+}
+
 .tique-pie-nequi {
   text-align: center;
   font-size: 11px;

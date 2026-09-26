@@ -10,6 +10,7 @@ import Sparkline from '../components/Sparkline.jsx';
 import Dinero from '../components/Dinero.jsx';
 import BarraCupo from '../components/BarraCupo.jsx';
 import ComprobanteModal from '../components/ComprobanteModal.jsx';
+import FacturaTotalModal from '../components/FacturaTotalModal.jsx';
 import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
 
 const PRODUCTOS_SUGERIDOS = [
@@ -39,6 +40,7 @@ export default function Cliente() {
   const [movABorrar, setMovABorrar] = useState(null);
   const [confirmarEliminar, setConfirmarEliminar] = useState(false);
   const [comprobanteParaMostrar, setComprobanteParaMostrar] = useState(null);
+  const [mostrarFacturaTotal, setMostrarFacturaTotal] = useState(false);
 
   async function cargar() {
     try {
@@ -185,17 +187,29 @@ export default function Cliente() {
           <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" /> Volver a Clientes
         </button>
 
-        {urlWhatsApp && (
-          <a
-            href={urlWhatsApp}
-            target="_blank"
-            rel="noopener noreferrer"
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {saldo > 0 && (
+            <button
+              type="button"
+              className="btn-whatsapp"
+              onClick={() => setMostrarFacturaTotal(true)}
+              title="Generar y enviar factura del total por WhatsApp"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1f4fd8', color: '#fff' }}
+            >
+              <Receipt size={15} strokeWidth={2} /> Factura Total
+            </button>
+          )}
+
+          <button
+            type="button"
             className="btn-whatsapp"
-            title="Enviar estado de cuenta por WhatsApp"
+            onClick={() => setMostrarFacturaTotal(true)}
+            title="Enviar factura con imagen a WhatsApp"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
             <MessageCircle size={15} strokeWidth={2} /> WhatsApp
-          </a>
-        )}
+          </button>
+        </div>
       </div>
 
       <div className="cliente-hero">
@@ -549,13 +563,23 @@ export default function Cliente() {
         </div>
       )}
 
-      {/* Comprobante Digital Modal */}
+      {/* Comprobante Digital Modal (Compra o Abono Específico) */}
       {comprobanteParaMostrar && (
         <ComprobanteModal
           movimiento={comprobanteParaMostrar.movimiento}
           cliente={comprobanteParaMostrar.cliente}
           tienda={perfilTienda}
           onClose={() => setComprobanteParaMostrar(null)}
+        />
+      )}
+
+      {/* Factura Total Modal (Estado de Cuenta Consolidado) */}
+      {mostrarFacturaTotal && (
+        <FacturaTotalModal
+          cliente={{ ...cliente, saldo }}
+          tienda={perfilTienda}
+          movimientos={movimientos}
+          onClose={() => setMostrarFacturaTotal(false)}
         />
       )}
 

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, Clock, MessageCircle, AlertTriangle, Search, ChevronRight, Phone, ShieldCheck, DollarSign, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Clock, MessageCircle, AlertTriangle, Search, ChevronRight, Phone, ShieldCheck, DollarSign, ArrowLeft, Receipt } from 'lucide-react';
 import { api } from '../api.js';
 import { formatearPesos, claseAvatar } from '../format.js';
 import { useToast } from '../components/Toast.jsx';
 import BarraCupo from '../components/BarraCupo.jsx';
+import FacturaTotalModal from '../components/FacturaTotalModal.jsx';
 import useRefrescarAlEnfocar from '../useRefrescarAlEnfocar.js';
 
 function diasSinActividad(ultimaActividad) {
@@ -19,6 +20,7 @@ export default function Cobranzas() {
   const [perfil, setPerfil] = useState(null);
   const [filtro, setFiltro] = useState('');
   const [tab, setTab] = useState('mora'); // 'mora' | 'cupo' | 'todos'
+  const [clienteParaFactura, setClienteParaFactura] = useState(null);
 
   async function cargar() {
     try {
@@ -196,25 +198,15 @@ export default function Cobranzas() {
                   </div>
 
                   <div className="cobranza-accion-col">
-                    {urlWA ? (
-                      <a
-                        href={urlWA}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-whatsapp-cobro"
-                        title="Enviar mensaje de cobro por WhatsApp"
-                      >
-                        <MessageCircle size={16} strokeWidth={2.5} /> Cobrar
-                      </a>
-                    ) : (
-                      <Link
-                        to={`/clientes/${c.id}`}
-                        className="btn-secundario"
-                        style={{ fontSize: 12, padding: '8px 12px' }}
-                      >
-                        Ver cuenta
-                      </Link>
-                    )}
+                    <button
+                      type="button"
+                      className="btn-whatsapp-cobro"
+                      onClick={() => setClienteParaFactura(c)}
+                      title="Generar y enviar factura de cobro con imagen por WhatsApp"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      <Receipt size={15} strokeWidth={2.2} /> Cobrar con Factura
+                    </button>
                   </div>
                 </div>
               );
@@ -229,6 +221,15 @@ export default function Cobranzas() {
           </div>
         </div>
       </section>
+
+      {/* Modal de Factura Total / Estado de Cuenta para Cobro */}
+      {clienteParaFactura && (
+        <FacturaTotalModal
+          cliente={clienteParaFactura}
+          tienda={perfil}
+          onClose={() => setClienteParaFactura(null)}
+        />
+      )}
     </div>
   );
 }

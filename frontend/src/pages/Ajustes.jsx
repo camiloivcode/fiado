@@ -126,15 +126,15 @@ export default function Ajustes() {
             </div>
 
             <div className="campo">
-              <label htmlFor="tienda-nequi">Cuenta Nequi o Daviplata para recibir abonos</label>
+              <label htmlFor="tienda-nequi">Número Nequi / Bre-B para recibir abonos (No Daviplata)</label>
               <input
                 id="tienda-nequi"
                 type="text"
-                placeholder="Ej: Nequi 310 987 6543"
+                placeholder="Ej: 310 987 6543"
                 value={nequi}
                 onChange={(e) => setNequi(e.target.value)}
               />
-              <span className="campo-ayuda">Se incluirá automáticamente en los mensajes de recordatorio de cobro por WhatsApp.</span>
+              <span className="campo-ayuda">Se incluirá en la factura con imagen y en el texto de WhatsApp para que el cliente copie y pegue el número directamente en su app de Nequi o Bre-B.</span>
             </div>
 
             <button type="submit" className="btn-primario" disabled={guardando}>
